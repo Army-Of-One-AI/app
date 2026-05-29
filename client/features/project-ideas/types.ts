@@ -58,8 +58,82 @@ export type ExecutionPlan = {
   features: ExecutionPlanFeature[];
 };
 
+export type PlanningDocuments = {
+  prd: {
+    title: string;
+    overview: string;
+    problemStatement: string;
+    goals: string[];
+    targetUsers: string[];
+    userPersonas: string[];
+    coreUserFlows: string[];
+    functionalRequirements: string[];
+    nonFunctionalRequirements: string[];
+    permissions: string[];
+    dataRequirements: string[];
+    notifications: string[];
+    edgeCases: string[];
+    constraints: string[];
+    nonGoals: string[];
+    successMetrics: string[];
+    featureRequirements: Array<{
+      featureId: string;
+      featureTitle: string;
+      description: string;
+      userValue: string;
+      expectedBehavior: string[];
+      dependencies: string[];
+      edgeCases: string[];
+      acceptanceCriteria: string[];
+    }>;
+  };
+  mvpScope: {
+    includedFeatures: string[];
+    excludedFeatures: string[];
+    buildOrder: string[];
+    assumptions: string[];
+    risks: string[];
+    dependencies: string[];
+    tradeoffs: string[];
+    launchCriteria: string[];
+  };
+  userStories: Array<{
+    featureId: string;
+    featureTitle: string;
+    stories: Array<{
+      persona: string;
+      story: string;
+      acceptanceCriteria: string[];
+      priority: ProductFeaturePriority;
+    }>;
+  }>;
+  milestones: Array<{
+    title: string;
+    objective: string;
+    featureIds: string[];
+    dependencies: string[];
+    outcome: string;
+  }>;
+  acceptanceRules: {
+    uxRules: string[];
+    securityRules: string[];
+    performanceRules: string[];
+    qualityRules: string[];
+    errorHandlingRules: string[];
+    releaseChecklist: string[];
+    testingChecklist: string[];
+  };
+};
+
 export type PlanJobStatus = "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "CANCELLED";
 export type PlanFeatureStatus = "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "CANCELLED";
+export type PlanJobPhase =
+  | "GENERATING_PRD"
+  | "GENERATING_MVP_SCOPE"
+  | "GENERATING_USER_STORIES"
+  | "GENERATING_MILESTONES"
+  | "GENERATING_ACCEPTANCE_RULES"
+  | "GENERATING_TASKS";
 
 export type PlanJobFeature = ExecutionPlanFeature & {
   status: PlanFeatureStatus;
@@ -83,15 +157,23 @@ export type StartGeneratePlanJobResponse = {
 export type GeneratePlanJob = {
   id: string;
   status: PlanJobStatus;
+  currentPhase: PlanJobPhase | null;
+  totalSteps: number;
+  completedSteps: number;
   totalFeatures: number;
   completedFeatures: number;
   progress: number;
+  currentItem: string | null;
   currentFeatureId: string | null;
   currentFeatureTitle: string | null;
+  pendingItems: string[];
+  completedItems: string[];
+  failedItems: string[];
   pendingFeatures: PlanJobFeature[];
   processingFeature: PlanJobFeature | null;
   completedFeaturesList: PlanJobFeature[];
   failedFeatures: PlanJobFeature[];
+  generatedDocuments: PlanningDocuments | null;
   resultPlan: ExecutionPlan | null;
   error: string | null;
 };
@@ -99,6 +181,7 @@ export type GeneratePlanJob = {
 export type CreateProjectFromIdeaInput = {
   idea: ProjectIdeaInput;
   vision: ProductVision;
+  documents: PlanningDocuments;
   plan: ExecutionPlan;
 };
 

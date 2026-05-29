@@ -30,13 +30,28 @@ export class ProjectIdeasController {
     return this.projectIdeasService.startGeneratePlanJob(dto);
   }
 
+  @Post('planning-jobs')
+  startPlanningJob(@Body() dto: StartGeneratePlanJobDto) {
+    return this.projectIdeasService.startPlanningJob(dto);
+  }
+
   @Get('generate-plan/jobs/:jobId')
   getGeneratePlanJob(@Param('jobId', ParseUUIDPipe) jobId: string) {
     return this.projectIdeasService.getGeneratePlanJob(jobId);
   }
 
+  @Get('planning-jobs/:jobId')
+  getPlanningJob(@Param('jobId', ParseUUIDPipe) jobId: string) {
+    return this.projectIdeasService.getPlanningJob(jobId);
+  }
+
   @Post('generate-plan/jobs/:jobId/cancel')
   cancelGeneratePlanJob(@Param('jobId', ParseUUIDPipe) jobId: string) {
     return this.projectIdeasService.cancelGeneratePlanJob(jobId);
+  }
+
+  @Post('planning-jobs/:jobId/cancel')
+  cancelPlanningJob(@Param('jobId', ParseUUIDPipe) jobId: string) {
+    return this.projectIdeasService.cancelPlanningJob(jobId);
   }
 }

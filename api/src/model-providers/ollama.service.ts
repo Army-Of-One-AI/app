@@ -45,15 +45,15 @@ type JsonParseResult =
     };
 
 const recommendedLocalModels: Record<OllamaRole, string> = {
-  PRODUCT_OWNER: 'llama3.2',
-  PM: 'llama3.2',
+  PRODUCT_OWNER: 'qwen3:4b',
+  PM: 'qwen3:4b',
   DESIGNER: 'gemma2:9b',
-  DEVELOPER: 'llama3.2',
-  QC: 'llama3.2',
-  LIGHTWEIGHT: 'gemma2:2b',
+  DEVELOPER: 'qwen3:4b',
+  QC: 'qwen3:4b',
+  LIGHTWEIGHT: 'qwen3:4b',
 };
 
-const fallbackModel = 'llama3.2';
+const fallbackModel = 'qwen3:4b';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -106,7 +106,9 @@ export class OllamaService {
     );
   }
 
-  private async getProviderConfig(role: OllamaRole): Promise<OllamaProviderConfig> {
+  private async getProviderConfig(
+    role: OllamaRole,
+  ): Promise<OllamaProviderConfig> {
     const provider = await this.prisma.modelProvider.findFirst({
       where: { type: ModelProviderType.OLLAMA },
       orderBy: { created_at: 'desc' },
@@ -114,7 +116,8 @@ export class OllamaService {
 
     return {
       baseUrl: provider?.base_url ?? 'http://localhost:11434',
-      modelName: provider?.model_name ?? recommendedLocalModels[role] ?? fallbackModel,
+      modelName:
+        provider?.model_name ?? recommendedLocalModels[role] ?? fallbackModel,
     };
   }
 

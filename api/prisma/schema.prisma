@@ -50,11 +50,35 @@ model ProjectIdeaPlanJob {
   current_feature_title String?
   product_vision        Json
   selected_features     Json
+  current_phase         String?
+  generated_documents   Json?
   result_plan           Json?
   created_at            DateTime                 @default(now())
   updated_at            DateTime                 @updatedAt
   started_at            DateTime?
   finished_at           DateTime?
+}
+
+model ProjectPlanningJob {
+  id                  String                   @id @default(uuid())
+  workspace_id        String
+  project_name        String
+  idea                String
+  generation_mode     String                   @default("FAST")
+  status              ProjectPlanningJobStatus @default(PENDING)
+  current_phase       String?
+  error               String?
+  total_steps         Int                      @default(0)
+  completed_steps     Int                      @default(0)
+  current_item        String?
+  product_vision      Json
+  selected_features   Json
+  generated_documents Json?
+  generated_tasks     Json?
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
+  started_at          DateTime?
+  finished_at         DateTime?
 }
 
 model Board {
@@ -254,6 +278,14 @@ enum DocumentSourceType {
 }
 
 enum ProjectIdeaPlanJobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum ProjectPlanningJobStatus {
   PENDING
   RUNNING
   SUCCESS
