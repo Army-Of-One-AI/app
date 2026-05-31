@@ -1,10 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
-import exampleReducer from "@/features/example-feature/slice";
 
 export const store = configureStore({
-  reducer: {
-    example: exampleReducer,
-  },
+  reducer: {},
   devTools: process.env.NODE_ENV === "development",
 });
 
