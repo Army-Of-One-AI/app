@@ -8,8 +8,13 @@ import UpsertUserDto from './dto/upsert-user.dto';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByID(id: string) {
-    return await this.prisma.user.findUnique({ where: { id } });
+  async findById(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    return user;
+  }
+
+  async findByEmail(email: string) {
+    return await this.prisma.user.findUnique({ where: { email } });
   }
 
   async upsert(dto: UpsertUserDto) {
@@ -46,7 +51,29 @@ export class UsersService {
     });
   }
 
-  async findByEmail(email: string) {
-    return await this.prisma.user.findUnique({ where: { email } });
+  async getUserInfoById(id: string) {
+    const userInfo = await this.prisma.userInfo.findUnique({
+      where: { user_id: id },
+    });
+
+    return {
+      fullName: userInfo?.full_name || '',
+      avatarImageURL: userInfo?.avatar_url || '',
+      phoneNo: userInfo?.phone_no || '',
+      title: userInfo?.title || '',
+    };
+  }
+
+  async getUserWorkspaceMembership(userId: string, workspaceSlug: string) {
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: {
+        member_id: userId,
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+    });
+
+    return membership;
   }
 }

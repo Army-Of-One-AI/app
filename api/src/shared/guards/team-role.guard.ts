@@ -8,7 +8,7 @@ import {
   Type,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { TeamRole } from 'generated/prisma/enums.cjs';
+import { TeamRole } from 'generated/prisma/enums';
 import { AuthUser } from '../types/types';
 import PrismaService from '../services/prisma.service';
 

@@ -26,7 +26,7 @@ export default function WorkspaceRoleGuard(
       const user = req.user as AuthUser | undefined;
 
       if (!workspaceSlug) {
-        throw new BadRequestException('Worksace is required in params');
+        throw new BadRequestException('Workspace is required in params');
       }
 
       if (!user || !user.id) {

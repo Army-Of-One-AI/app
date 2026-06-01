@@ -1,4 +1,12 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import GoogleAuthGuard from './guards/google-auth.guard';
 import { AuthUser, GoogleUser } from 'src/shared/types/types';
@@ -41,7 +49,24 @@ export class AuthController {
 
   @UseGuards(JWTAuthGuard)
   @Get('me')
-  async getCurrentUserInfo(@CurrentUser() user: AuthUser) {
-    return this.userService.findByID(user.id);
+  async getCurrentUserInfo(@CurrentUser() currentUser: AuthUser) {
+    const user = await this.userService.findById(currentUser.id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const userInfo = await this.userService.getUserInfoById(user.id);
+    return { ...user, ...userInfo };
+  }
+
+  @Post('logout')
+  logOut(@Res() res: Response) {
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+    });
+
+    return res.status(200).json({ message: 'Logged out successfully' });
   }
 }
