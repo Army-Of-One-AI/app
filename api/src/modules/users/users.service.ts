@@ -1,46 +1,52 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { UpdateMeDto } from './dto/update-me.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
+import { nanoid } from 'nanoid';
+import slugify from 'slugify';
+import PrismaService from 'src/shared/services/prisma.service';
+import UpsertUserDto from './dto/upsert-user.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  me(userId: string) {
-    return this.findById(userId);
+  async findByID(id: string) {
+    return await this.prisma.user.findUnique({ where: { id } });
   }
 
-  async updateMe(userId: string, dto: UpdateMeDto) {
-    await this.ensureExists(userId);
+  async upsert(dto: UpsertUserDto) {
+    const { email, fullName, phoneNo, avatarImageURL } = dto;
 
-    return this.prisma.userInfo.upsert({
-      where: { user_id: userId },
+    const username = slugify(`${email.split('@')[0]} ${nanoid(6)}`);
+    const userInfo = {
+      avatar_url: avatarImageURL || '',
+      full_name: fullName || '',
+      phone_no: phoneNo || '',
+    };
+
+    return await this.prisma.user.upsert({
+      where: { email },
       create: {
-        user_id: userId,
-        ...dto,
+        email,
+        is_active: true,
+        username,
+        userInfo: {
+          create: userInfo,
+        },
       },
-      update: dto,
+      update: {
+        userInfo: {
+          upsert: {
+            create: userInfo,
+            update: userInfo,
+          },
+        },
+      },
+      include: {
+        userInfo: true,
+      },
     });
   }
 
-  async findById(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      include: { userInfo: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
-  }
-
-  private async ensureExists(id: string) {
-    const count = await this.prisma.user.count({ where: { id } });
-
-    if (!count) {
-      throw new NotFoundException('User not found');
-    }
+  async findByEmail(email: string) {
+    return await this.prisma.user.findUnique({ where: { email } });
   }
 }

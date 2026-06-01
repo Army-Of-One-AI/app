@@ -1,65 +1,47 @@
-import { Controller, Get, Redirect, Req, UseGuards } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiFoundResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
-import type { Request } from 'express';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { UserResponseDto } from '../common/dto/response.dto';
-import type { GoogleProfileUser, JwtUser } from '../common/types/auth.types';
+import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { GoogleOAuthGuard } from './guards/google-oauth.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import GoogleAuthGuard from './guards/google-auth.guard';
+import { AuthUser, GoogleUser } from 'src/shared/types/types';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import JWTAuthGuard from './guards/jwt-auth.guard';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
+import { UsersService } from '../users/users.service';
 
 @Controller('auth')
-@ApiTags('Auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly authService: AuthService,
+    private readonly userService: UsersService,
+  ) {}
 
+  @UseGuards(GoogleAuthGuard)
   @Get('google')
-  @UseGuards(GoogleOAuthGuard)
-  @ApiOperation({
-    summary: 'Start Google OAuth login',
-    description: 'Redirects the browser to Google login.',
-  })
-  @ApiFoundResponse({ description: 'Redirects to Google OAuth consent screen.' })
-  googleAuth() {
-    return;
-  }
+  async googleAuth() {}
 
+  @UseGuards(GoogleAuthGuard)
   @Get('google/callback')
-  @UseGuards(GoogleOAuthGuard)
-  @Redirect()
-  @ApiOperation({
-    summary: 'Handle Google OAuth callback',
-    description:
-      'Creates or finds the Google user, generates a JWT access token, and redirects to FRONTEND_URL/auth/callback?access_token=<token>.',
-  })
-  @ApiFoundResponse({
-    description: 'Redirects to the frontend auth callback with access_token.',
-  })
-  async googleCallback(@Req() req: Request & { user: GoogleProfileUser }) {
-    const result = await this.authService.validateGoogleUser(req.user);
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  async googleCallback(
+    @Req() req: Request & { user: GoogleUser },
+    @Res() res: Response,
+  ) {
+    const data = await this.authService.verifyGoogleUser(req.user);
 
-    return {
-      url: `${frontendUrl}/auth/callback?access_token=${encodeURIComponent(
-        result.access_token,
-      )}`,
-    };
+    res.cookie('access_token', data.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+    });
+
+    const frontendURL = this.configService.getOrThrow<string>('FRONTEND_URL');
+
+    return res.redirect(`${frontendURL}/dashboard`);
   }
 
+  @UseGuards(JWTAuthGuard)
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Get current authenticated user' })
-  @ApiOkResponse({ type: UserResponseDto })
-  @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid.' })
-  me(@CurrentUser() user: JwtUser) {
-    return this.authService.me(user.sub);
+  async getCurrentUserInfo(@CurrentUser() user: AuthUser) {
+    return this.userService.findByID(user.id);
   }
 }
