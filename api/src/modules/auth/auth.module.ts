@@ -8,6 +8,7 @@ import PrismaService from 'src/shared/services/prisma.service';
 import GoogleStrategy from './strategies/google.strategy';
 import JWTStrategy from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
+import { WorkspacesModule } from '../workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from '../users/users.module';
       },
     }),
     UsersModule,
+    WorkspacesModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, PrismaService, GoogleStrategy, JWTStrategy],

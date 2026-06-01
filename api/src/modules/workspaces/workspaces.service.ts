@@ -61,6 +61,7 @@ export class WorkspacesService {
       where: { member_id: userId },
       select: {
         workspace: true,
+        role: true,
       },
       orderBy: {
         workspace: {
@@ -73,6 +74,7 @@ export class WorkspacesService {
       id: wm.workspace.id,
       name: wm.workspace.name,
       slug: wm.workspace.slug,
+      role: wm.role,
     }));
   }
 

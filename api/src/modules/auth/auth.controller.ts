@@ -15,13 +15,15 @@ import { ConfigService } from '@nestjs/config';
 import JWTAuthGuard from './guards/jwt-auth.guard';
 import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
+import { WorkspacesService } from '../workspaces/workspaces.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
-    private readonly userService: UsersService,
+    private readonly usersService: UsersService,
+    private readonly workspacesService: WorkspacesService,
   ) {}
 
   @UseGuards(GoogleAuthGuard)
@@ -40,23 +42,34 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     });
 
     const frontendURL = this.configService.getOrThrow<string>('FRONTEND_URL');
 
-    return res.redirect(`${frontendURL}/dashboard`);
+    return res.redirect(`${frontendURL}`);
   }
 
   @UseGuards(JWTAuthGuard)
   @Get('me')
   async getCurrentUserInfo(@CurrentUser() currentUser: AuthUser) {
-    const user = await this.userService.findById(currentUser.id);
+    const user = await this.usersService.findById(currentUser.id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const userInfo = await this.userService.getUserInfoById(user.id);
-    return { ...user, ...userInfo };
+    const userInfo = await this.usersService.getUserInfoById(user.id);
+    const workspaces = await this.workspacesService.getWorkspacesByUserId(
+      user.id,
+    );
+    return {
+      id: user.id,
+      username: user.username,
+      createdAt: user.created_at,
+      email: user.email,
+      ...userInfo,
+      workspaces,
+    };
   }
 
   @Post('logout')

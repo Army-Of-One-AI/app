@@ -27,6 +27,15 @@
   --color-secondary-button: #fff7e6;
   --color-secondary-button-text: #8a5f00;
   --shadow-soft: 0 1px 3px rgba(31, 41, 55, 0.06);
+
+  --btn-primary-bg: #809bce;
+  --btn-primary-bg-hover: #6d89bd;
+  --btn-primary-color: #ffffff;
+
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-bg-hover: #f8fafc;
+  --btn-secondary-color: #475569;
+  --btn-secondary-border: #cbd5e1;
 }
 
 @theme inline {
@@ -42,5 +51,9 @@ body {
 }
 
 .ai-gradient {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-yellow));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-yellow)
+  );
 }

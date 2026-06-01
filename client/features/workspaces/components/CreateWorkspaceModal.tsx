@@ -1,16 +1,19 @@
-'use client';
+"use client";
 
-import Button from '@/shared/ui/Button';
-import { useState } from 'react';
-import slugify from 'slugify';
+import Button from "@/shared/ui/Button";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import slugify from "slugify";
+
+type CreateWorkspaceFormValues = {
+  name: string;
+  slug: string;
+  logoURL: string;
+};
 
 type CreateWorkspaceModalProps = {
   onClose: () => void;
-  onCreate: (data: {
-    name: string;
-    slug: string;
-    logoURL?: string;
-  }) => void;
+  onCreate: (data: { name: string; slug: string; logoURL?: string }) => void;
   isLoading?: boolean;
 };
 
@@ -19,60 +22,67 @@ export default function CreateWorkspaceModal({
   onCreate,
   isLoading = false,
 }: CreateWorkspaceModalProps) {
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [logoURL, setLogoURL] = useState('');
-  const [slugTouched, setSlugTouched] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<CreateWorkspaceFormValues>({
+    defaultValues: {
+      name: "",
+      slug: "",
+      logoURL: "",
+    },
+  });
 
-  const handleNameChange = (value: string) => {
-    setName(value);
+  const name = watch("name");
+  const slug = watch("slug");
 
-    if (!slugTouched) {
-      setSlug(
-        slugify(value, {
-          lower: true,
-          strict: true,
-          trim: true,
-        }),
-      );
-    }
-  };
+  useEffect(() => {
+    setValue(
+      "slug",
+      slugify(name, {
+        lower: true,
+        strict: true,
+        trim: true,
+      })
+    );
+  }, [name, setValue]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim() || !slug.trim()) return;
-
+  const onSubmit = (data: CreateWorkspaceFormValues) => {
     onCreate({
-      name: name.trim(),
-      slug: slugify(slug, {
+      name: data.name.trim(),
+      slug: slugify(data.slug, {
         lower: true,
         strict: true,
         trim: true,
       }),
-      ...(logoURL.trim() && {
-        logoURL: logoURL.trim(),
+      ...(data.logoURL.trim() && {
+        logoURL: data.logoURL.trim(),
       }),
     });
   };
 
   return (
-    <div
-      className="w-[500px]"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="w-125" onClick={(e) => e.stopPropagation()}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">
             Workspace name
           </label>
 
           <input
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
+            {...register("name", {
+              required: "Workspace name is required",
+            })}
             placeholder="Army of One"
             className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-gray-900"
           />
+
+          {errors.name && (
+            <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>
+          )}
         </div>
 
         <div>
@@ -86,27 +96,32 @@ export default function CreateWorkspaceModal({
             </div>
 
             <input
-              value={slug}
-              onChange={(e) => {
-                setSlugTouched(true);
-
-                setSlug(
-                  slugify(e.target.value, {
-                    lower: true,
-                    strict: true,
-                    trim: true,
-                  }),
-                );
-              }}
+              {...register("slug", {
+                required: "Workspace URL is required",
+                onChange: (e) => {
+                  setValue(
+                    "slug",
+                    slugify(e.target.value, {
+                      lower: true,
+                      strict: true,
+                      trim: true,
+                    })
+                  );
+                },
+              })}
               placeholder="my-workspace"
               className="flex-1 px-3 py-2 text-sm outline-none"
             />
           </div>
 
+          {errors.slug && (
+            <p className="mt-1 text-xs text-red-500">{errors.slug.message}</p>
+          )}
+
           <p className="mt-1 text-xs text-gray-500">
-            Your workspace will be available at{' '}
+            Your workspace will be available at{" "}
             <span className="font-medium text-gray-700">
-              {process.env.NEXT_PUBLIC_APP_URL}/{slug || 'my-workspace'}
+              {process.env.NEXT_PUBLIC_APP_URL}/{slug || "my-workspace"}
             </span>
           </p>
         </div>
@@ -118,24 +133,19 @@ export default function CreateWorkspaceModal({
           </label>
 
           <input
-            value={logoURL}
-            onChange={(e) => setLogoURL(e.target.value)}
+            {...register("logoURL")}
             placeholder="https://example.com/logo.png"
             className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-gray-900"
           />
         </div>
 
         <div className="flex justify-end gap-2 pt-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isLoading}
-            className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-          >
+          <Button variant="secondary" onClick={onClose} type="button">
             Cancel
-          </button>
-          <Button type='primary' onClick={() => { }}>
-            {isLoading ? 'Creating...' : 'Create'}
+          </Button>
+
+          <Button variant="primary" type="submit" disabled={isLoading}>
+            {isLoading ? "Creating..." : "Create"}
           </Button>
         </div>
       </form>

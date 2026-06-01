@@ -1,28 +1,58 @@
-'use client';
+"use client";
 
-import { HTMLAttributes } from "react";
+import React, { HTMLAttributes } from "react";
 
-type ButtonProps = {
-    type?: 'primary' | 'secondary';
-    children: React.ReactNode;
-    onClick: () => void;
-    style?: React.CSSProperties
-    className?: HTMLAttributes<HTMLButtonElement>['className']
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary";
+  className?: HTMLAttributes<HTMLButtonElement>["className"];
+};
+
+const variants = {
+  primary: {
+    bg: "bg-[var(--btn-primary-bg)]",
+    hover: "hover:bg-[var(--btn-primary-bg-hover)]",
+    text: "text-[var(--btn-primary-color)]",
+    border: "border-transparent",
+  },
+  secondary: {
+    bg: "bg-[var(--btn-secondary-bg)]",
+    hover: "hover:bg-[var(--btn-secondary-bg-hover)]",
+    text: "text-[var(--btn-secondary-color)]",
+    border: "border border-[var(--btn-secondary-border)]",
+  },
 };
 
 export default function Button({
-    children,
-    onClick,
-    style,
-    className,
-    type = "primary"
+  children,
+  variant = "primary",
+  className = "",
+  disabled,
+  ...props
 }: ButtonProps) {
-    return (
-        <button style={{
-            backgroundColor: type === "primary" ? "#462C7D" : "grey",
-            ...style,
-        }} className={`${className} text-[white] px-4 py-2 rounded-lg font-medium cursor-pointer text-sm`} onClick={onClick} type='submit'>
-            {children}
-        </button>
-    );
+  const styles = variants[variant];
+
+  return (
+    <button
+      disabled={disabled}
+      className={`
+        ${styles.bg}
+        ${styles.hover}
+        ${styles.text}
+        ${styles.border}
+        px-4 py-2
+        rounded-lg
+        font-medium
+        text-sm
+        transition-colors
+        duration-200
+        cursor-pointer
+        disabled:opacity-50
+        disabled:cursor-not-allowed
+        ${className}
+      `}
+      {...props}
+    >
+      {children}
+    </button>
+  );
 }
