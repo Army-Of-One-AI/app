@@ -20,10 +20,11 @@ export function ProjectRoleGuard(roles: ProjectRole[]): Type<CanActivate> {
     async canActivate(ctx: ExecutionContext) {
       const req: Request = ctx.switchToHttp().getRequest();
       const user = req.user as AuthUser | undefined;
+
       const workspaceSlug = req.params.workspaceSlug as string;
       const projectSlug = (req.params.projectSlug || req.params.slug) as string;
 
-      if (!user || !user.id) {
+      if (!user?.id) {
         throw new ForbiddenException('User is not authenticated');
       }
 
@@ -45,6 +46,11 @@ export function ProjectRoleGuard(roles: ProjectRole[]): Type<CanActivate> {
             slug: projectSlug,
             workspace: {
               slug: workspaceSlug,
+              members: {
+                some: {
+                  member_id: user.id,
+                },
+              },
             },
           },
         },

@@ -74,3 +74,16 @@ export const classNames = {
     surface: "hover:bg-[var(--surface)]",
   },
 } as const;
+
+export const projectStatusColors = {
+  Planning: "bg-[var(--status-planning-bg)] text-[var(--status-planning-text)]",
+
+  Active: "bg-[var(--status-active-bg)] text-[var(--status-active-text)]",
+
+  On_Hold: "bg-[var(--status-onhold-bg)] text-[var(--status-onhold-text)]",
+
+  Completed:
+    "bg-[var(--status-completed-bg)] text-[var(--status-completed-text)]",
+
+  Archived: "bg-[var(--status-archived-bg)] text-[var(--status-archived-text)]",
+} as const;

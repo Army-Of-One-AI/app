@@ -53,7 +53,7 @@ export default function ModalProvider({
           >
             <div className="p-6 flex flex-col bg-[white] shadow-2xl rounded-lg">
               <div className="w-full pb-4 flex flex-row items-center justify-between border-b border-solid border-black/15">
-                <div className="font-bold text-black/50 text-lg">
+                <div className="font-bold text-black/60 text-md">
                   {modalTitle}
                 </div>
                 <div onClick={() => setModalContent(null)}>

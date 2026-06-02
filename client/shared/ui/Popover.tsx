@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { AnimatePresence, motion } from 'motion/react';
-import { classNames } from '../styles/classNames';
-import { useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from "motion/react";
+import { classNames } from "../styles/classNames";
+import { useEffect, useRef } from "react";
 
 type Props = {
   children: React.ReactNode;
@@ -12,21 +12,24 @@ type Props = {
 };
 
 export default function Popover({ children, isOpen, content, onClose }: Props) {
-  const popoverRef = useRef<HTMLDivElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose?.()
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node)
+      ) {
+        onClose?.();
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <div ref={popoverRef} className="relative inline-block">

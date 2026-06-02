@@ -181,10 +181,11 @@ model Project {
   slug        String
   description Json?
 
-  status       ProjectStatus @default(Planning)
-  start_date   DateTime?
-  target_date  DateTime?
-  completed_at DateTime?
+  status         ProjectStatus @default(Planning)
+  start_date     DateTime?
+  target_date    DateTime?
+  completed_at   DateTime?
+  is_member_only Boolean       @default(false)
 
   workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   workspace_id String

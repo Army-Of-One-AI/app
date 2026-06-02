@@ -1,64 +1,45 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { MoreHorizontal, Plus, Search } from 'lucide-react';
-import { useParams } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import slugify from 'slugify';
-
-import { classNames } from '@/shared/styles/classNames';
-import PageContent from '@/shared/ui/DashboardLayout/PageContent';
-import { ProjectStatus } from '@/shared/types/enums';
-import { apiClient } from '@/shared/api/apiClient';
-import Button from '@/shared/ui/Button';
-import useDebounce from '@/shared/hooks/useDebounce';
-import useModal from '@/shared/hooks/useModal';
-
-type Project = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  status: ProjectStatus;
-  targetDate: string | null;
-  taskCount: number;
-  memberCount: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type FindProjectsResponse = {
-  items: Project[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
-
-type CreateProjectPayload = {
-  name: string;
-  slug: string;
-  description?: string;
-  status: ProjectStatus;
-  targetDate?: string;
-};
+import { Plus, Search } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { classNames, projectStatusColors } from "@/shared/styles/classNames";
+import PageContent from "@/shared/ui/DashboardLayout/PageContent";
+import { ProjectStatus } from "@/shared/types/enums";
+import { apiClient } from "@/shared/api/apiClient";
+import Button from "@/shared/ui/Button";
+import useDebounce from "@/shared/hooks/useDebounce";
+import useModal from "@/shared/hooks/useModal";
+import FilterPill from "./components/FilterPill";
+import { DateTime } from "luxon";
+import {
+  CreateProjectPayload,
+  FindProjectsResponse,
+} from "@/features/projects/types";
+import CreateProjectModal from "./components/CreateProjectModal";
+import DataTable from "@/shared/ui/Table";
+import Drawer, { DrawerDirection } from "@/shared/ui/Drawer";
+import { useMediaQuery } from "usehooks-ts";
+import ProjectOverview from "./components/ProjectOverview";
 
 export default function ProjectsPage() {
   const params = useParams<{ workspaceSlug: string }>();
+  const matches = useMediaQuery("(min-width: 768px)");
   const workspaceSlug = params.workspaceSlug;
 
   const queryClient = useQueryClient();
   const { openModal, closeModal } = useModal();
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
-  const [status, setStatus] = useState<ProjectStatus | ''>('');
+  const [status, setStatus] = useState<ProjectStatus | "">("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  );
 
   const { data, isLoading } = useQuery({
-    queryKey: ['workspace-projects', workspaceSlug, debouncedSearch, status],
+    queryKey: ["workspace-projects", workspaceSlug, debouncedSearch, status],
     queryFn: async () => {
       const res = await apiClient.get<FindProjectsResponse>(
         `/workspaces/${workspaceSlug}/projects`,
@@ -69,7 +50,7 @@ export default function ProjectsPage() {
             ...(debouncedSearch.trim() && { name: debouncedSearch.trim() }),
             ...(status && { status }),
           },
-        },
+        }
       );
 
       return res.data;
@@ -81,14 +62,14 @@ export default function ProjectsPage() {
     mutationFn: async (payload: CreateProjectPayload) => {
       const res = await apiClient.post(
         `/workspaces/${workspaceSlug}/projects`,
-        payload,
+        payload
       );
 
       return res.data;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['workspace-projects', workspaceSlug],
+        queryKey: ["workspace-projects", workspaceSlug],
       });
 
       closeModal();
@@ -97,7 +78,7 @@ export default function ProjectsPage() {
 
   const openCreateProjectModal = () => {
     openModal({
-      title: 'Create new project',
+      title: "Create new project",
       modalContent: (
         <CreateProjectModal
           isLoading={createProjectMutation.isPending}
@@ -116,7 +97,7 @@ export default function ProjectsPage() {
         <div className="flex w-full flex-col gap-4">
           <div className="flex w-full items-center justify-between gap-4">
             <div className="flex items-center gap-2 overflow-x-auto">
-              <FilterPill active={status === ''} onClick={() => setStatus('')}>
+              <FilterPill active={status === ""} onClick={() => setStatus("")}>
                 All
               </FilterPill>
 
@@ -126,7 +107,7 @@ export default function ProjectsPage() {
                   active={status === val}
                   onClick={() => setStatus(val)}
                 >
-                  {val.split('_').join(' ')}
+                  {val.split("_").join(" ")}
                 </FilterPill>
               ))}
             </div>
@@ -159,234 +140,169 @@ export default function ProjectsPage() {
         </div>
       }
     >
-      <div className="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-4">
-        {isLoading &&
-          Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className={`
-                h-56 animate-pulse rounded-xl border
-                ${classNames.card.bg}
-                ${classNames.card.border}
-              `}
-            />
-          ))}
+      <DataTable
+        className={`relative w-full table-auto`}
+        getRowKey={(row) => row.id}
+        stickyHeader
+        stickyTopGap={16}
+        skeletonRows={8}
+        isLoading={isLoading}
+        columns={[
+          {
+            field: "name",
+            label: "Name",
+            render: (rowVal) => (
+              <button
+                type="button"
+                className="cursor-pointer hover:underline"
+                onClick={() => {
+                  setSelectedProjectId(rowVal.id);
+                }}
+              >
+                {rowVal.name}
+              </button>
+            ),
+          },
+          {
+            field: "members",
+            label: "Members",
+            render: (rowValue) => {
+              const members = Array(10)
+                .fill(rowValue.members[0])
+                .map(
+                  (
+                    m: {
+                      id: string;
+                      username: string;
+                      email: string;
+                      avatarURL?: string;
+                      fullName?: string;
+                    },
+                    i
+                  ) => ({
+                    ...m,
+                    id: `${m.id}_${i + 1}`,
+                  })
+                );
+              const visibleMembers = members.slice(0, 5);
+              const remainingCount = members.length - visibleMembers.length;
 
-        {!isLoading &&
-          projects.map((project) => (
-            <Link
-              key={project.id}
-              href={`/${workspaceSlug}/projects/${project.slug}`}
-              className={`
-                rounded-xl border p-5 transition
-                ${classNames.card.bg}
-                ${classNames.card.border}
-                hover:bg-[var(--surface)]
-              `}
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">{project.name}</h2>
-                  <p className={`mt-3 line-clamp-2 text-sm ${classNames.text.secondary}`}>
-                    {project.description || 'No description'}
-                  </p>
+              return (
+                <div className="flex items-center">
+                  {visibleMembers.map((member, index) => (
+                    <div
+                      key={member.id}
+                      className="
+                      relative
+                      flex h-7 w-7 items-center justify-center
+                      rounded-full
+                      border-2 border-[var(--surface)]
+                      bg-[var(--primary)]
+                      text-xs font-semibold
+                      text-white
+                      shadow-sm
+                      -ml-2 first:ml-0
+                      hover:z-20 hover:scale-110
+                      transition-all
+                    "
+                      style={{
+                        zIndex: visibleMembers.length - index,
+                      }}
+                      title={member.fullName}
+                    >
+                      {member.fullName
+                        ?.split(" ")
+                        .slice(0, 2)
+                        .map((x) => x[0])
+                        .join("")
+                        .toUpperCase()}
+                    </div>
+                  ))}
+
+                  {remainingCount > 0 && (
+                    <div
+                      className="
+                      relative
+                      -ml-2
+                      flex h-7 w-7 items-center justify-center
+                      rounded-full
+                      border-2 border-[var(--surface)]
+                      bg-[var(--secondary)]
+                      text-[10px]
+                      font-semibold
+                      text-[var(--text-secondary)]
+                    "
+                    >
+                      +{remainingCount}
+                    </div>
+                  )}
                 </div>
-
-                <div
+              );
+            },
+          },
+          {
+            field: "taskCount",
+            label: "Tasks",
+          },
+          {
+            field: "status",
+            label: "Status",
+            render: (rowValue) => {
+              return (
+                <span
                   className={`
-                    flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold
-                    ${classNames.surface}
-                  `}
+                    inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                    ${projectStatusColors[rowValue.status]}`}
                 >
-                  {project.name[0]}
-                </div>
-              </div>
-
-              <div className="mb-4 flex items-center justify-between text-sm">
-                <span>{project.status.split('_').join(' ')}</span>
-                <span className={classNames.text.secondary}>
-                  {project.targetDate
-                    ? new Date(project.targetDate).toLocaleDateString()
-                    : 'No target date'}
+                  {rowValue.status.split("_").join(" ")}
                 </span>
-              </div>
+              );
+            },
+          },
+          {
+            field: "createdAt",
+            label: "Created Date",
+            render: (rowVal) => {
+              if (!rowVal.targetDate) return <h1>-</h1>;
 
-              <p className="mb-4 text-sm">Tasks Overview</p>
+              return (
+                <h1>
+                  {DateTime.fromJSDate(new Date(rowVal.createdAt)).toFormat(
+                    "dd/MM/yyyy"
+                  )}
+                </h1>
+              );
+            },
+          },
+          {
+            field: "targetDate",
+            label: "Target Date",
+            render: (rowVal) => {
+              if (!rowVal.targetDate) return <h1>-</h1>;
 
-              <div className="mb-7 grid grid-cols-2 gap-3">
-                <Stat value={project.taskCount} label="Tasks" />
-                <Stat value={project.memberCount} label="Members" />
-              </div>
+              return (
+                <h1>
+                  {DateTime.fromJSDate(new Date(rowVal.targetDate)).toFormat(
+                    "dd/MM/yyyy"
+                  )}
+                </h1>
+              );
+            },
+          },
+        ]}
+        data={projects}
+      />
 
-              <div className="flex items-center justify-between">
-                <span className={`text-xs ${classNames.text.secondary}`}>
-                  Updated {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : '-'}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={(e) => e.preventDefault()}
-                  className={`
-                    rounded-md p-1
-                    ${classNames.text.secondary}
-                    hover:bg-[var(--surface)]
-                  `}
-                >
-                  <MoreHorizontal size={18} />
-                </button>
-              </div>
-            </Link>
-          ))}
-
-        {!isLoading && projects.length === 0 && (
-          <div className={`col-span-full py-20 text-center ${classNames.text.secondary}`}>
-            No projects found.
-          </div>
-        )}
-      </div>
-    </PageContent>
-  );
-}
-
-function CreateProjectModal({
-  onCreate,
-  isLoading,
-}: {
-  onCreate: (payload: CreateProjectPayload) => void;
-  isLoading: boolean;
-}) {
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.Planning);
-  const [targetDate, setTargetDate] = useState('');
-
-  const handleNameChange = (value: string) => {
-    setName(value);
-
-    if (!slugTouched) {
-      setSlug(slugify(value, { lower: true, strict: true }));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim() || !slug.trim()) return;
-
-    onCreate({
-      name: name.trim(),
-      slug: slugify(slug, { lower: true, strict: true }),
-      status,
-      ...(description.trim() && { description: description.trim() }),
-      ...(targetDate && { targetDate }),
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-[100vw] w-125">
-      <div>
-        <label className="mb-1 block text-sm font-medium">Project name</label>
-        <input
-          value={name}
-          onChange={(e) => handleNameChange(e.target.value)}
-          placeholder="Website Redesign"
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Slug</label>
-        <input
-          value={slug}
-          onChange={(e) => {
-            setSlugTouched(true);
-            setSlug(e.target.value);
-          }}
-          placeholder="website-redesign"
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Description</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="What is this project about?"
-          rows={3}
-          className={`w-full resize-none rounded-lg border bg-transparent px-3 py-2 text-sm outline-none ${classNames.border}`}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Status</label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
-        >
-          {Object.values(ProjectStatus).map((val) => (
-            <option key={val} value={val}>
-              {val.split('_').join(' ')}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Target date</label>
-        <input
-          type="date"
-          value={targetDate}
-          onChange={(e) => setTargetDate(e.target.value)}
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
-        />
-      </div>
-
-      <Button
-        type="submit"
-        disabled={isLoading || !name.trim() || !slug.trim()}
-        className="w-full"
+      <Drawer
+        onClose={() => setSelectedProjectId(null)}
+        isOpen={Boolean(selectedProjectId)}
+        direction={matches ? DrawerDirection.Right : DrawerDirection.Bottom}
+        className={`${!matches && "h-screen"}`}
       >
-        {isLoading ? 'Creating...' : 'Create Project'}
-      </Button>
-    </form>
-  );
-}
-
-function FilterPill({
-  children,
-  active = false,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`
-        rounded-full border px-3 py-1 text-sm
-        ${classNames.border}
-        ${active ? classNames.text.primary : classNames.text.secondary}
-        ${active ? 'border-[var(--primary)]' : ''}
-        hover:bg-[var(--surface)]
-      `}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div>
-      <div className="text-xl font-semibold">{value}</div>
-      <div className={`text-xs ${classNames.text.secondary}`}>{label}</div>
-    </div>
+        <ProjectOverview
+          project={projects.find((ele) => ele.id === selectedProjectId)}
+        />
+      </Drawer>
+    </PageContent>
   );
 }

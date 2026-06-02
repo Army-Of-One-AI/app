@@ -3,9 +3,7 @@
 import useWorkspaceDetailsBySlug from "@/features/workspaces/hooks/useWorkspaceDetailsBySlug";
 import { classNames } from "@/shared/styles/classNames";
 import {
-  Check,
   ChevronDown,
-  ChevronRight,
   FolderKanban,
   Inbox,
   Layers3,
@@ -16,9 +14,9 @@ import {
 import { useParams } from "next/navigation";
 import Popover from "../Popover";
 import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import UserPopoverContent from "./UserPopoverContent";
 import useCurrentUserInfo from "@/features/auth/hooks/useCurrentUserInfo";
+import Link from "next/link";
 
 type SidebarItem = {
   label: string;
@@ -66,11 +64,12 @@ export default function Sidebar() {
   const params = useParams();
   const slug = params.workspaceSlug as string;
 
-  const [isOpenPopover, setOpenPopover] = useState(false)
+  const [isOpenPopover, setOpenPopover] = useState(false);
 
-  const { data, isLoading: isLoadingWorkspaceDetails } = useWorkspaceDetailsBySlug(slug);
-  const { data: userInfo, isLoading: isLoadingUserInfo } = useCurrentUserInfo()
-  const isLoading = isLoadingWorkspaceDetails || isLoadingUserInfo
+  const { data, isLoading: isLoadingWorkspaceDetails } =
+    useWorkspaceDetailsBySlug(slug);
+  const { data: userInfo, isLoading: isLoadingUserInfo } = useCurrentUserInfo();
+  const isLoading = isLoadingWorkspaceDetails || isLoadingUserInfo;
 
   const workspaceName = data?.name ?? "Workspace";
   const workspaceInitial = workspaceName.charAt(0).toUpperCase();
@@ -88,18 +87,19 @@ export default function Sidebar() {
       <Popover
         isOpen={isOpenPopover}
         onClose={() => setOpenPopover(false)}
-        content={<UserPopoverContent userInfo={userInfo} />
-        }>
+        content={<UserPopoverContent userInfo={userInfo} />}
+      >
         <button
-          type='button'
+          type="button"
           onClick={() => setOpenPopover((curr) => !curr)}
-          className="flex items-center gap-3 px-2 cursor-pointer">
+          className="flex items-center gap-3 px-2 cursor-pointer"
+        >
           <div
-            className="
+            className={`
             flex h-8 w-8 shrink-0 items-center justify-center
-            rounded-full bg-[var(--primary)]
-            text-sm font-semibold text-[var(--text-primary)]
-          "
+            rounded-full ${classNames.primary.bg}
+            text-sm font-semibold ${classNames.primary.text}]
+            `}
           >
             {isLoading ? "..." : workspaceInitial}
           </div>
@@ -115,7 +115,7 @@ export default function Sidebar() {
 
       <nav className="mt-6 flex flex-col gap-1">
         {workspaceItems.map((item) => (
-          <a
+          <Link
             key={item.path}
             href={buildPath(item.path)}
             className={`
@@ -127,7 +127,7 @@ export default function Sidebar() {
           >
             <span className="shrink-0">{item.icon}</span>
             <span>{item.label}</span>
-          </a>
+          </Link>
         ))}
       </nav>
 
@@ -143,7 +143,7 @@ export default function Sidebar() {
 
         <nav className="flex flex-col gap-1">
           {managementItems.map((item) => (
-            <a
+            <Link
               key={item.path}
               href={buildPath(item.path)}
               className={`
@@ -155,7 +155,7 @@ export default function Sidebar() {
             >
               <span className="shrink-0">{item.icon}</span>
               <span>{item.label}</span>
-            </a>
+            </Link>
           ))}
         </nav>
       </div>
@@ -195,7 +195,7 @@ export default function Sidebar() {
               icon: <Layers3 size={18} />,
             },
           ].map((item) => (
-            <a
+            <Link
               key={item.path}
               href={buildPath(item.path)}
               className={`
@@ -207,7 +207,7 @@ export default function Sidebar() {
             >
               <span className="shrink-0">{item.icon}</span>
               <span>{item.label}</span>
-            </a>
+            </Link>
           ))}
         </nav>
       </div>

@@ -9,8 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
     "@reduxjs/toolkit": "^2.12.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.100.14",
+    "@tiptap/react": "^3.24.0",
+    "@tiptap/starter-kit": "^3.24.0",
     "axios": "^1.16.1",
     "lucide-react": "^1.17.0",
     "motion": "^12.40.0",
@@ -19,15 +23,18 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.77.0",
     "react-redux": "^9.3.0",
-    "slugify": "^1.6.9"
+    "slugify": "^1.6.9",
+    "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "luxon": "^3.7.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

@@ -1,30 +1,78 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import PrismaService from 'src/shared/services/prisma.service';
 import FindProjectsDto from './dto/find-projects.dto';
+import { CreateProjectDto } from './dto/create-project.dto';
+import { Prisma } from 'generated/prisma/browser';
 
 @Injectable()
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findProjects(dto: FindProjectsDto, workspaceSlug?: string) {
-    const { name, status, page, limit } = dto;
+  async create(
+    creatorId: string,
+    workspaceSlug: string,
+    dto: CreateProjectDto,
+  ) {
+    const { name, slug, description, startDate, status, targetDate } = dto;
 
-    const where = {
+    const project = await this.prisma.project.create({
+      data: {
+        name,
+        slug,
+        description: description === undefined ? undefined : description,
+        status,
+        start_date: startDate ? new Date(startDate) : undefined,
+        target_date: targetDate ? new Date(targetDate) : undefined,
+        members: {
+          create: {
+            member_id: creatorId,
+            role: 'Product_Owner',
+          },
+        },
+        workspace: {
+          connect: {
+            slug: workspaceSlug,
+          },
+        },
+      },
+    });
+
+    return {
+      id: project.id,
+      name: project.name,
+      slug: project.slug,
+      description: project.description,
+      status: project.status,
+      startDate: project.start_date,
+      targetDate: project.target_date,
+      completedAt: project.completed_at,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+    };
+  }
+
+  async findProjects(dto: FindProjectsDto, workspaceSlug?: string) {
+    const { name, status, page = 1, limit = 10 } = dto;
+
+    const where: Prisma.ProjectWhereInput = {
+      deleted_at: null,
+
       ...(workspaceSlug && {
         workspace: {
           slug: workspaceSlug,
         },
       }),
-      ...(name && {
+
+      ...(name?.trim() && {
         name: {
-          contains: name,
-          mode: 'insensitive' as const,
+          contains: name.trim(),
+          mode: 'insensitive',
         },
       }),
+
       ...(status && {
         status,
       }),
-      deleted_at: null,
     };
 
     const [projects, total] = await this.prisma.$transaction([
@@ -35,15 +83,44 @@ export class ProjectsService {
         orderBy: {
           updated_at: 'desc',
         },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          status: true,
+          target_date: true,
+          start_date: true,
+          created_at: true,
+          updated_at: true,
+          completed_at: true,
+
           _count: {
             select: {
               tasks: true,
-              members: true,
+            },
+          },
+
+          members: {
+            select: {
+              member: {
+                select: {
+                  id: true,
+                  username: true,
+                  email: true,
+                  userInfo: {
+                    select: {
+                      full_name: true,
+                      avatar_url: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
       }),
+
       this.prisma.project.count({
         where,
       }),
@@ -55,19 +132,69 @@ export class ProjectsService {
         name: project.name,
         slug: project.slug,
         description: project.description,
-        status: String(project.status),
-        targetDate: String(project.target_date),
+        status: project.status,
+        targetDate: project.target_date,
         taskCount: project._count.tasks,
-        memberCount: project._count.members,
+        members: project.members.map(({ member }) => ({
+          id: member.id,
+          username: member.username,
+          fullName: member.userInfo?.full_name ?? null,
+          email: member.email,
+          avatarURL: member.userInfo?.avatar_url ?? null,
+        })),
         createdAt: project.created_at,
         updatedAt: project.updated_at,
+        completedAt: project.completed_at,
+        startDate: project.start_date,
       })),
+
       pagination: {
         page,
         limit,
         total,
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  async getProjectBySlug(projectSlug: string, workspaceSlug: string) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        slug: projectSlug,
+        deleted_at: null,
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        status: true,
+        target_date: true,
+        start_date: true,
+        created_at: true,
+        updated_at: true,
+        completed_at: true,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Resource not found');
+    }
+
+    return {
+      id: project.id,
+      name: project.name,
+      slug: project.slug,
+      description: project.description,
+      status: project.status,
+      targetDate: project.target_date,
+      startDate: project.start_date,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+      completedAt: project.completed_at,
     };
   }
 }

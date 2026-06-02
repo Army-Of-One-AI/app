@@ -17,6 +17,9 @@ import { WorkspaceRole } from 'generated/prisma/client';
 import UpsertWorkspaceDto from './dto/upsert-workspace.dto';
 import FindProjectsDto from '../projects/dto/find-projects.dto';
 import { ProjectsService } from '../projects/projects.service';
+import { CreateProjectDto } from '../projects/dto/create-project.dto';
+import { ProjectRole } from 'generated/prisma/enums';
+import { ProjectRoleGuard } from 'src/shared/guards/project-role.guard';
 
 @Controller('workspaces')
 export class WorkspacesController {
@@ -92,5 +95,44 @@ export class WorkspacesController {
     @Query() query: FindProjectsDto,
   ) {
     return await this.projectsService.findProjects(query, slug);
+  }
+
+  @UseGuards(
+    JWTAuthGuard,
+    WorkspaceRoleGuard([
+      WorkspaceRole.Owner,
+      WorkspaceRole.Owner,
+      WorkspaceRole.Member,
+    ]),
+  )
+  @Post(':workspaceSlug/projects')
+  async createWorkspaceProject(
+    @CurrentUser() user: AuthUser,
+    @Param('workspaceSlug') slug: string,
+    @Body() payload: CreateProjectDto,
+  ) {
+    return await this.projectsService.create(user.id, slug, payload);
+  }
+
+  @UseGuards(
+    JWTAuthGuard,
+    ProjectRoleGuard([
+      ProjectRole.Product_Owner,
+      ProjectRole.Tech_Lead,
+      ProjectRole.Project_Manager,
+      ProjectRole.Designer,
+      ProjectRole.DevOps,
+      ProjectRole.Developer,
+      ProjectRole.QC,
+      ProjectRole.Member,
+      ProjectRole.Owner,
+    ]),
+  )
+  @Get(':workspaceSlug/projects/:projectSlug')
+  async getProjectDetails(
+    @Param('workspaceSlug') wsSlug: string,
+    @Param('projectSlug') pjSlug: string,
+  ) {
+    return await this.projectsService.getProjectBySlug(pjSlug, wsSlug);
   }
 }
