@@ -1,16 +1,37 @@
+import { classNames } from "@/shared/styles/classNames";
 import Sidebar from "./Sidebar";
 
-export default function DashboardLayout({
-  children,
-}: {
+type Props = {
   children: React.ReactNode;
-}) {
+};
+
+export default function DashboardLayout({ children }: Props) {
   return (
-    <div className="absolute top-0 left-0 right-0 bottom-0 bg-[#faf8f8]">
+    <div
+      className={`
+        absolute inset-0
+        ${classNames.background}
+      `}
+    >
       <Sidebar />
-      <div className="absolute h-[calc(100vh-24px)] rounded-lg top-3 left-60 bg-[white] w-[calc(100vw-252px)] shadow-md">
+
+      <main
+        className={`
+          absolute
+          top-3
+          left-60
+          h-[calc(100vh-24px)]
+          w-[calc(100vw-252px)]
+          overflow-y-auto
+          rounded-xl
+          border
+          ${classNames.background}
+          ${classNames.border}
+          shadow-lg
+        `}
+      >
         {children}
-      </div>
+      </main>
     </div>
   );
 }

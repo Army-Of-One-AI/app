@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { WorkspacesService } from './workspaces.service';
@@ -14,15 +15,33 @@ import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 import WorkspaceRoleGuard from 'src/shared/guards/workspace-role.guard';
 import { WorkspaceRole } from 'generated/prisma/client';
 import UpsertWorkspaceDto from './dto/upsert-workspace.dto';
+import FindProjectsDto from '../projects/dto/find-projects.dto';
+import { ProjectsService } from '../projects/projects.service';
 
 @Controller('workspaces')
 export class WorkspacesController {
-  constructor(private readonly workspacesService: WorkspacesService) {}
+  constructor(
+    private readonly workspacesService: WorkspacesService,
+    private readonly projectsService: ProjectsService,
+  ) {}
 
   @UseGuards(JWTAuthGuard)
   @Get()
   async getCurrentUserWorkspaces(@CurrentUser() currentUser: AuthUser) {
     return await this.workspacesService.getWorkspacesByUserId(currentUser.id);
+  }
+
+  @UseGuards(
+    JWTAuthGuard,
+    WorkspaceRoleGuard([
+      WorkspaceRole.Owner,
+      WorkspaceRole.Owner,
+      WorkspaceRole.Member,
+    ]),
+  )
+  @Get(':workspaceSlug')
+  async getWorkspaceDetails(@Param('workspaceSlug') slug: string) {
+    return await this.workspacesService.getWorkspaceDetailsBySlug(slug);
   }
 
   @UseGuards(JWTAuthGuard)
@@ -57,5 +76,21 @@ export class WorkspacesController {
       workspaceSlug,
     );
     return membership;
+  }
+
+  @UseGuards(
+    JWTAuthGuard,
+    WorkspaceRoleGuard([
+      WorkspaceRole.Owner,
+      WorkspaceRole.Owner,
+      WorkspaceRole.Member,
+    ]),
+  )
+  @Get(':workspaceSlug/projects')
+  async findWorkspaceProjects(
+    @Param('workspaceSlug') slug: string,
+    @Query() query: FindProjectsDto,
+  ) {
+    return await this.projectsService.findProjects(query, slug);
   }
 }

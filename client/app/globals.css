@@ -28,6 +28,7 @@
   --color-secondary-button-text: #8a5f00;
   --shadow-soft: 0 1px 3px rgba(31, 41, 55, 0.06);
 
+  /* Button */
   --btn-primary-bg: #809bce;
   --btn-primary-bg-hover: #6d89bd;
   --btn-primary-color: #ffffff;
@@ -36,6 +37,38 @@
   --btn-secondary-bg-hover: #f8fafc;
   --btn-secondary-color: #475569;
   --btn-secondary-border: #cbd5e1;
+
+  /* Brand */
+  --primary: #a2d5c6;
+  --primary-hover: #8fc8b7;
+
+  --secondary: #f6f6f6;
+  --secondary-hover: #ececec;
+
+  /* Semantic */
+  --success: #cfffe2;
+  --accent: #a2d5c6;
+
+  /* Layout */
+  --background: #f6f6f6;
+  --surface: #ffffff;
+
+  /* Borders */
+  --border: #e5e7eb;
+
+  /* Typography */
+  --text-primary: #000000;
+  --text-secondary: #6b7280;
+
+  /* Buttons */
+  --btn-primary-bg: #a2d5c6;
+  --btn-primary-bg-hover: #8fc8b7;
+  --btn-primary-color: #000000;
+
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-bg-hover: #f6f6f6;
+  --btn-secondary-color: #000000;
+  --btn-secondary-border: #e5e7eb;
 }
 
 @theme inline {

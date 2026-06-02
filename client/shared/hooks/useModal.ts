@@ -1,11 +1,12 @@
-import { useState } from "react";
+'use client'
+
+import { useContext } from "react";
+import { ModalContext } from "../providers/ModalProvider";
 
 export default function useModal() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { openModal, closeModal } = useContext(ModalContext)
 
   return {
-    isOpen,
-    open: () => setIsOpen(true),
-    close: () => setIsOpen(false),
+    openModal, closeModal
   };
 }

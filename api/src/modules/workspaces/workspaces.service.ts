@@ -1,34 +1,82 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import PrismaService from 'src/shared/services/prisma.service';
 import { WorkspaceRole } from 'generated/prisma/enums';
 import UpsertWorkspaceDto from './dto/upsert-workspace.dto';
+import { Prisma } from 'generated/prisma/client';
+import { getUniqueFields } from 'src/shared/helpers/prisma.helper';
 
 @Injectable()
 export class WorkspacesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: UpsertWorkspaceDto) {
-    const workspace = await this.prisma.workspace.create({
-      data: {
-        name: dto.name,
-        slug: dto.slug,
-        ...(dto.logoURL && { logo_url: dto.logoURL }),
-        members: {
-          create: {
-            member_id: userId,
-            role: WorkspaceRole.Owner,
+    try {
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: dto.name,
+          slug: dto.slug,
+          ...(dto.logoURL && { logo_url: dto.logoURL }),
+          members: {
+            create: {
+              member_id: userId,
+              role: WorkspaceRole.Owner,
+            },
           },
         },
+      });
+
+      return {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        logoURL: workspace.logo_url,
+        createdAt: workspace.created_at,
+        updatedAt: workspace.updated_at,
+      };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const fields = getUniqueFields(err);
+
+        throw new BadRequestException({
+          message: 'Validation failed',
+          errors: Object.fromEntries(
+            fields.map((field) => [
+              field,
+              `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`,
+            ]),
+          ),
+        });
+      }
+
+      throw err;
+    }
+  }
+
+  async getWorkspaceDetailsBySlug(slug: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: {
+        slug,
       },
     });
 
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
     return {
       id: workspace.id,
+      createdAt: workspace.created_at,
+      updatedAt: workspace.updated_at,
       name: workspace.name,
       slug: workspace.slug,
       logoURL: workspace.logo_url,
-      createdAt: workspace.created_at,
-      updatedAt: workspace.updated_at,
     };
   }
 
@@ -89,5 +137,30 @@ export class WorkspacesService {
     });
 
     return membership;
+  }
+
+  async findWorkspaceProjects(workspaceSlug: string) {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        deleted_at: {
+          not: null,
+        },
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+    });
+
+    return projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+      status: String(p.status),
+      targetDate: String(p.target_date),
+      startDate: String(p.start_date),
+      description: p.description,
+    }));
   }
 }

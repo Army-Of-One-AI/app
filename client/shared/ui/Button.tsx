@@ -1,25 +1,11 @@
 "use client";
 
 import React, { HTMLAttributes } from "react";
+import { classNames } from "../styles/classNames";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary";
   className?: HTMLAttributes<HTMLButtonElement>["className"];
-};
-
-const variants = {
-  primary: {
-    bg: "bg-[var(--btn-primary-bg)]",
-    hover: "hover:bg-[var(--btn-primary-bg-hover)]",
-    text: "text-[var(--btn-primary-color)]",
-    border: "border-transparent",
-  },
-  secondary: {
-    bg: "bg-[var(--btn-secondary-bg)]",
-    hover: "hover:bg-[var(--btn-secondary-bg-hover)]",
-    text: "text-[var(--btn-secondary-color)]",
-    border: "border border-[var(--btn-secondary-border)]",
-  },
 };
 
 export default function Button({
@@ -29,7 +15,7 @@ export default function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const styles = variants[variant];
+  const styles = classNames.button[variant];
 
   return (
     <button
