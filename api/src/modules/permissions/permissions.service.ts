@@ -2,37 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { ProjectRole, WorkspaceRole } from 'generated/prisma/enums';
 import PrismaService from 'src/shared/services/prisma.service';
 
-const WORKSPACE_CREATE_PROJECT_ROLES: readonly WorkspaceRole[] = [
+export const WORKSPACE_CREATE_PROJECT_ROLES: WorkspaceRole[] = [
   WorkspaceRole.Owner,
   WorkspaceRole.Admin,
 ];
 
-const WORKSPACE_UPDATE_ROLES: readonly WorkspaceRole[] = [
+export const WORKSPACE_UPDATE_ROLES: WorkspaceRole[] = [
   WorkspaceRole.Owner,
   WorkspaceRole.Admin,
 ];
 
-const WORKSPACE_DELETE_ROLES: readonly WorkspaceRole[] = [WorkspaceRole.Owner];
+export const WORKSPACE_DELETE_ROLES: WorkspaceRole[] = [WorkspaceRole.Owner];
 
-const PROJECT_UPDATE_ROLES: readonly ProjectRole[] = [
-  ProjectRole.Owner,
-  ProjectRole.Product_Owner,
-  ProjectRole.Project_Manager,
-];
-
-const PROJECT_DELETE_ROLES: readonly ProjectRole[] = [
-  ProjectRole.Owner,
-  ProjectRole.Project_Manager,
-  ProjectRole.Product_Owner,
-];
-
-const PROJECT_MEMBER_MANAGE_ROLES: readonly ProjectRole[] = [
-  ProjectRole.Owner,
-  ProjectRole.Project_Manager,
-  ProjectRole.Product_Owner,
-];
-
-const TASK_CREATE_ROLES: readonly ProjectRole[] = [
+export const PROJECT_READ_ROLES: ProjectRole[] = [
   ProjectRole.Owner,
   ProjectRole.Product_Owner,
   ProjectRole.Project_Manager,
@@ -44,21 +26,7 @@ const TASK_CREATE_ROLES: readonly ProjectRole[] = [
   ProjectRole.Member,
 ];
 
-const TASK_ASSIGN_ROLES: readonly ProjectRole[] = [
-  ProjectRole.Owner,
-  ProjectRole.Product_Owner,
-  ProjectRole.Project_Manager,
-  ProjectRole.Tech_Lead,
-];
-
-const TASK_DELETE_ROLES: readonly ProjectRole[] = [
-  ProjectRole.Owner,
-  ProjectRole.Project_Manager,
-  ProjectRole.Tech_Lead,
-  ProjectRole.Product_Owner,
-];
-
-const TASK_UPDATE_ROLES: readonly ProjectRole[] = [
+export const PROJECT_CREATE_ROLES: ProjectRole[] = [
   ProjectRole.Owner,
   ProjectRole.Product_Owner,
   ProjectRole.Project_Manager,
@@ -70,7 +38,75 @@ const TASK_UPDATE_ROLES: readonly ProjectRole[] = [
   ProjectRole.Member,
 ];
 
-const TASK_STATUS_UPDATE_ROLES: readonly ProjectRole[] = [
+export const PROJECT_UPDATE_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Product_Owner,
+  ProjectRole.Project_Manager,
+];
+
+export const PROJECT_DELETE_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Product_Owner,
+];
+
+export const PROJECT_MEMBER_MANAGE_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Product_Owner,
+];
+
+export const TASK_READ_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Product_Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Tech_Lead,
+  ProjectRole.Designer,
+  ProjectRole.DevOps,
+  ProjectRole.Developer,
+  ProjectRole.QC,
+  ProjectRole.Member,
+];
+
+export const TASK_CREATE_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Product_Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Tech_Lead,
+  ProjectRole.Designer,
+  ProjectRole.DevOps,
+  ProjectRole.Developer,
+  ProjectRole.QC,
+  ProjectRole.Member,
+];
+
+export const TASK_ASSIGN_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Product_Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Tech_Lead,
+];
+
+export const TASK_DELETE_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Tech_Lead,
+  ProjectRole.Product_Owner,
+];
+
+export const TASK_UPDATE_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Product_Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Tech_Lead,
+  ProjectRole.Designer,
+  ProjectRole.DevOps,
+  ProjectRole.Developer,
+  ProjectRole.QC,
+  ProjectRole.Member,
+];
+
+export const TASK_STATUS_UPDATE_ROLES: ProjectRole[] = [
   ProjectRole.Owner,
   ProjectRole.Product_Owner,
   ProjectRole.Project_Manager,

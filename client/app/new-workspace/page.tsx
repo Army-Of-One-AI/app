@@ -65,7 +65,7 @@ export default function CreateWorkspacePage() {
     ${classNames.input.placeholder}
     ${
       hasError
-        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+        ? `${classNames.danger.border} ${classNames.danger.focus} ${classNames.danger.ring}`
         : `${classNames.input.border} ${classNames.input.focus}`
     }
   `;
@@ -122,8 +122,8 @@ export default function CreateWorkspacePage() {
         </div>
 
         {errorMessages.length > 0 && (
-          <div className="mb-5 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3">
-            <ul className="list-disc space-y-1 pl-4 text-sm text-red-500">
+          <div className={`mb-5 rounded-lg border px-4 py-3 ${classNames.danger.border} ${classNames.danger.bg}`}>
+            <ul className={`list-disc space-y-1 pl-4 text-sm ${classNames.danger.text}`}>
               {errorMessages.map((message) => (
                 <li key={message}>{message}</li>
               ))}
@@ -156,7 +156,7 @@ export default function CreateWorkspacePage() {
                 flex h-10 items-center overflow-hidden rounded-lg border transition
                 ${
                   errors.slug
-                    ? 'border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/20'
+                    ? `${classNames.danger.border} focus-within:border-[var(--danger)] focus-within:ring-2 focus-within:ring-[var(--focus-danger)]`
                     : `${classNames.input.border} focus-within:border-[var(--primary)]`
                 }
                 ${classNames.input.bg}
@@ -166,7 +166,7 @@ export default function CreateWorkspacePage() {
                 className={`
                   flex h-full items-center border-r px-3 text-sm
                   ${classNames.secondary.bg}
-                  ${errors.slug ? 'border-red-500/40' : classNames.input.border}
+                  ${errors.slug ? classNames.danger.border : classNames.input.border}
                   ${classNames.text.secondary}
                 `}
               >

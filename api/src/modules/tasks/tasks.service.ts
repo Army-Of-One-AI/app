@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import PrismaService from 'src/shared/services/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TaskPriority, TaskStatus } from 'generated/prisma/enums';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
@@ -95,6 +96,103 @@ export class TasksService {
     };
   }
 
+  async updateTask(
+    workspaceSlug: string,
+    projectSlug: string,
+    taskId: string,
+    dto: UpdateTaskDto,
+  ) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        deleted_at: null,
+        project: {
+          slug: projectSlug,
+          deleted_at: null,
+          workspace: {
+            slug: workspaceSlug,
+          },
+        },
+      },
+      select: {
+        id: true,
+        project_id: true,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const updatedTask = await this.prisma.task.update({
+      where: {
+        id: task.id,
+      },
+      data: {
+        ...(dto.title !== undefined && {
+          title: dto.title,
+        }),
+
+        ...(dto.description !== undefined && {
+          description: dto.description,
+        }),
+
+        ...(dto.status !== undefined && {
+          status: dto.status,
+        }),
+
+        ...(dto.priority !== undefined && {
+          priority: dto.priority,
+        }),
+
+        ...(dto.estimate !== undefined && {
+          estimate: dto.estimate,
+        }),
+
+        ...(dto.dueDate !== undefined && {
+          due_date: dto.dueDate ? new Date(dto.dueDate) : null,
+        }),
+
+        ...(dto.assigneeId !== undefined && {
+          assignee_id: dto.assigneeId || null,
+        }),
+
+        ...(dto.parentTaskId !== undefined && {
+          parent_task_id: dto.parentTaskId || null,
+        }),
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        priority: true,
+        estimate: true,
+        due_date: true,
+        started_at: true,
+        completed_at: true,
+        position: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    return {
+      id: updatedTask.id,
+      title: updatedTask.title,
+      description: updatedTask.description,
+      status: updatedTask.status,
+      priority: updatedTask.priority,
+      estimate: updatedTask.estimate,
+      dueDate: updatedTask.due_date,
+      startedAt: updatedTask.started_at,
+      completedAt: updatedTask.completed_at,
+      position: Number(updatedTask.position),
+      createdAt: updatedTask.created_at,
+      updatedAt: updatedTask.updated_at,
+    };
+  }
+
   async getTasksByProjectSlug(projectSlug: string, workspaceSlug: string) {
     const tasks = await this.prisma.task.findMany({
       where: {
@@ -176,5 +274,90 @@ export class TasksService {
           }
         : null,
     }));
+  }
+
+  async getTaskById(id: string, projectSlug: string) {
+    const t = await this.prisma.task.findFirst({
+      where: {
+        id,
+        deleted_at: null,
+        project: {
+          slug: projectSlug,
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        completed_at: true,
+        created_at: true,
+        description: true,
+        due_date: true,
+        estimate: true,
+        priority: true,
+        position: true,
+        status: true,
+        started_at: true,
+        assignee: {
+          select: {
+            id: true,
+            email: true,
+            userInfo: {
+              select: {
+                avatar_url: true,
+                full_name: true,
+              },
+            },
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            email: true,
+            userInfo: {
+              select: {
+                avatar_url: true,
+                full_name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!t) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return {
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      completedAt: t.completed_at,
+      createdAt: t.created_at,
+      dueDate: t.due_date,
+      estimate: t.estimate,
+      priority: t.priority,
+      position: t.position,
+      status: t.status,
+      startedAt: t.started_at,
+
+      assignee: t.assignee
+        ? {
+            id: t.assignee.id,
+            email: t.assignee.email,
+            fullName: t.assignee.userInfo?.full_name ?? null,
+            avatarURL: t.assignee.userInfo?.avatar_url ?? null,
+          }
+        : null,
+
+      creator: t.creator
+        ? {
+            id: t.creator.id,
+            email: t.creator.email,
+            fullName: t.creator.userInfo?.full_name ?? null,
+            avatarURL: t.creator.userInfo?.avatar_url ?? null,
+          }
+        : null,
+    };
   }
 }

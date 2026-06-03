@@ -1,7 +1,8 @@
 "use client";
 
 import useGetProjectDetailsBySlug from "@/features/projects/hooks/useGetProjectDetailsBySlug";
-import { ProjectStatus } from "@/shared/types/enums";
+import { classNames, projectStatusColors } from "@/shared/styles/classNames";
+import { parseRichText } from "@/shared/utils/helpers";
 import { CalendarDays, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useParams } from "next/navigation";
 
@@ -15,38 +16,10 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function getDescriptionText(description: unknown) {
-  if (!description) return "No description provided.";
-
-  if (typeof description === "string") return description;
-
-  if (
-    typeof description === "object" &&
-    description !== null &&
-    "html" in description
-  ) {
-    return (
-      (description as { html?: string }).html ?? "No description provided."
-    );
-  }
-
-  return "No description provided.";
-}
-
-const statusClassName: Record<ProjectStatus, string> = {
-  Planning: "bg-slate-100 text-slate-700",
-  Active: "bg-emerald-100 text-emerald-700",
-  On_Hold: "bg-amber-100 text-amber-700",
-  Completed: "bg-blue-100 text-blue-700",
-  Archived: "bg-zinc-100 text-zinc-600",
-};
-
 export default function ProjectDetailsPage() {
   const params = useParams();
-
   const workspaceSlug = params.workspaceSlug as string;
   const projectSlug = params.projectSlug as string;
-
   const {
     data: project,
     isLoading,
@@ -63,13 +36,11 @@ export default function ProjectDetailsPage() {
 
   if (error || !project) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div className={`rounded-xl border p-4 text-sm ${classNames.danger.border} ${classNames.danger.bg} ${classNames.danger.text}`}>
         Failed to load project details.
       </div>
     );
   }
-
-  const descriptionHtml = getDescriptionText(project.description);
 
   return (
     <div className="space-y-6 py-4">
@@ -82,9 +53,8 @@ export default function ProjectDetailsPage() {
               </h1>
 
               <span
-                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                  statusClassName[project.status]
-                }`}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${projectStatusColors[project.status]
+                  }`}
               >
                 {project.status}
               </span>
@@ -134,16 +104,10 @@ export default function ProjectDetailsPage() {
           Description
         </h2>
 
-        {descriptionHtml.includes("<") ? (
-          <div
-            className="prose prose-sm mt-4 max-w-none text-[var(--text-primary)]"
-            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-          />
-        ) : (
-          <p className="mt-4 whitespace-pre-line text-sm leading-6 text-[var(--text-secondary)]">
-            {descriptionHtml}
-          </p>
-        )}
+        <div
+          className="rich-text"
+          dangerouslySetInnerHTML={{ __html: parseRichText(project.description).html }}
+        />
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">

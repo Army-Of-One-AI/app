@@ -11,6 +11,16 @@ import { classNames } from "@/shared/styles/classNames";
 import RichTextEditor from "@/shared/ui/RichTextEditor";
 import Button from "@/shared/ui/Button";
 
+const labelClassName = `mb-1 block text-sm font-medium ${classNames.text.primary}`;
+const fieldClassName = `
+  h-10 w-full rounded-lg border px-3 text-sm outline-none transition
+  ${classNames.input.bg}
+  ${classNames.input.border}
+  ${classNames.input.text}
+  ${classNames.input.placeholder}
+  ${classNames.input.focus}
+`;
+
 export default function CreateProjectModal({
   onCreate,
   isLoading,
@@ -59,17 +69,17 @@ export default function CreateProjectModal({
   return (
     <form onSubmit={handleSubmit} className="w-125 max-w-[100vw] space-y-4">
       <div>
-        <label className="mb-1 block text-sm font-medium">Project name</label>
+        <label className={labelClassName}>Project name</label>
         <input
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Website Redesign"
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+          className={fieldClassName}
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Slug</label>
+        <label className={labelClassName}>Slug</label>
         <input
           value={slug}
           onChange={(e) => {
@@ -77,21 +87,21 @@ export default function CreateProjectModal({
             setSlug(e.target.value);
           }}
           placeholder="website-redesign"
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+          className={fieldClassName}
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Description</label>
+        <label className={labelClassName}>Description</label>
         <RichTextEditor value={description} onChange={setDescription} />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Status</label>
+        <label className={labelClassName}>Status</label>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+          className={fieldClassName}
         >
           {Object.values(ProjectStatus).map((val) => (
             <option key={val} value={val}>
@@ -103,34 +113,34 @@ export default function CreateProjectModal({
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">Start date</label>
+          <label className={labelClassName}>Start date</label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+            className={fieldClassName}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Target date</label>
+          <label className={labelClassName}>Target date</label>
           <input
             type="date"
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
-            className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+            className={fieldClassName}
           />
         </div>
       </div>
 
       {status === ProjectStatus.Completed && (
         <div>
-          <label className="mb-1 block text-sm font-medium">Completed at</label>
+          <label className={labelClassName}>Completed at</label>
           <input
             type="date"
             value={completedAt}
             onChange={(e) => setCompletedAt(e.target.value)}
-            className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+            className={fieldClassName}
           />
         </div>
       )}

@@ -8,12 +8,14 @@ import {
   Inbox,
   Layers3,
   ListTodo,
+  Moon,
   Settings,
+  Sun,
   Users,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import Popover from "../Popover";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import UserPopoverContent from "./UserPopoverContent";
 import useCurrentUserInfo from "@/features/auth/hooks/useCurrentUserInfo";
 import Link from "next/link";
@@ -23,6 +25,21 @@ type SidebarItem = {
   path: string;
   icon: React.ReactNode;
 };
+
+type ThemeMode = "dark" | "light";
+const THEME_CHANGE_EVENT = "app-theme-change";
+
+function getThemeSnapshot(): ThemeMode {
+  if (typeof document === "undefined") return "dark";
+
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
+
+function subscribeToThemeChange(onStoreChange: () => void) {
+  window.addEventListener(THEME_CHANGE_EVENT, onStoreChange);
+
+  return () => window.removeEventListener(THEME_CHANGE_EVENT, onStoreChange);
+}
 
 const workspaceItems: SidebarItem[] = [
   {
@@ -65,6 +82,11 @@ export default function Sidebar() {
   const slug = params.workspaceSlug as string;
 
   const [isOpenPopover, setOpenPopover] = useState(false);
+  const theme = useSyncExternalStore(
+    subscribeToThemeChange,
+    getThemeSnapshot,
+    () => "dark"
+  );
 
   const { data, isLoading: isLoadingWorkspaceDetails } =
     useWorkspaceDetailsBySlug(slug);
@@ -75,6 +97,14 @@ export default function Sidebar() {
   const workspaceInitial = workspaceName.charAt(0).toUpperCase();
 
   const buildPath = (path: string) => `/${slug}${path}`;
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+
+    document.documentElement.dataset.theme = nextTheme;
+    localStorage.setItem("theme", nextTheme);
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+  };
 
   return (
     <aside
@@ -98,7 +128,7 @@ export default function Sidebar() {
             className={`
             flex h-8 w-8 shrink-0 items-center justify-center
             rounded-full ${classNames.primary.bg}
-            text-sm font-semibold ${classNames.primary.text}]
+            text-sm font-semibold ${classNames.primary.text}
             `}
           >
             {isLoading ? "..." : workspaceInitial}
@@ -211,6 +241,24 @@ export default function Sidebar() {
           ))}
         </nav>
       </div>
+
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={
+          theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+        }
+        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        className={`
+          mt-8 flex h-9 w-9 items-center justify-center rounded-lg border
+          ${classNames.border}
+          ${classNames.text.secondary}
+          hover:bg-[var(--secondary)]
+          hover:text-[var(--text-primary)]
+        `}
+      >
+        {theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+      </button>
     </aside>
   );
 }

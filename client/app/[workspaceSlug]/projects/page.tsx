@@ -192,19 +192,19 @@ export default function ProjectsPage() {
                   {visibleMembers.map((member, index) => (
                     <div
                       key={member.id}
-                      className="
+                      className={`
                       relative
                       flex h-7 w-7 items-center justify-center
                       rounded-full
                       border-2 border-[var(--surface)]
                       bg-[var(--primary)]
                       text-xs font-semibold
-                      text-white
+                      ${classNames.primary.text}
                       shadow-sm
                       -ml-2 first:ml-0
                       hover:z-20 hover:scale-110
                       transition-all
-                    "
+                    `}
                       style={{
                         zIndex: visibleMembers.length - index,
                       }}

@@ -115,10 +115,14 @@ export default function Drawer({
             duration: 0.5,
             bounce: 0.25,
           }}
-          className={`fixed z-9999 rounded-l-xl shadow-lg flex flex-col ${classNames.surface} ${className} overflow-y-auto`}
+          className={`fixed z-9999 rounded-l-xl shadow-lg flex flex-col ${classNames.surface} ${classNames.text.primary} ${className} overflow-y-auto`}
         >
           <div className="w-full pt-4 flex items-center justify-end px-4">
-            <X onClick={() => onClose()} className="cursor-pointer" size={20} />
+            <X
+              onClick={() => onClose()}
+              className={`cursor-pointer ${classNames.text.secondary}`}
+              size={20}
+            />
           </div>
           <div>{children}</div>
         </motion.div>

@@ -177,6 +177,23 @@ export class ProjectsService {
         created_at: true,
         updated_at: true,
         completed_at: true,
+        members: {
+          select: {
+            member: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                userInfo: {
+                  select: {
+                    full_name: true,
+                    avatar_url: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -195,6 +212,51 @@ export class ProjectsService {
       createdAt: project.created_at,
       updatedAt: project.updated_at,
       completedAt: project.completed_at,
+      members: project.members.map((m) => ({
+        id: m.member.id,
+        username: m.member.username,
+        email: m.member.email,
+        fullName: m.member.userInfo?.full_name,
+        avatarURL: m.member.userInfo?.avatar_url,
+      })),
     };
+  }
+
+  async getProjectMembers(projectSlug: string, workspaceSlug: string) {
+    const members = await this.prisma.projectMember.findMany({
+      where: {
+        project: {
+          slug: projectSlug,
+          workspace: {
+            slug: workspaceSlug,
+          },
+        },
+      },
+      select: {
+        role: true,
+        member: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            userInfo: {
+              select: {
+                full_name: true,
+                avatar_url: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return members.map((m) => ({
+      id: m.member.id,
+      username: m.member.username,
+      email: m.member.email,
+      fullName: m.member.userInfo?.full_name,
+      avatarURL: m.member.userInfo?.avatar_url,
+      role: m.role,
+    }));
   }
 }

@@ -19,11 +19,18 @@ import UpsertWorkspaceDto from './dto/upsert-workspace.dto';
 import FindProjectsDto from '../projects/dto/find-projects.dto';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateProjectDto } from '../projects/dto/create-project.dto';
-import { ProjectRole } from 'generated/prisma/enums';
 import { ProjectRoleGuard } from 'src/shared/guards/project-role.guard';
 import { TasksService } from '../tasks/tasks.service';
 import { CreateTaskDto } from '../tasks/dto/create-task.dto';
 import { CurrentUserProjectPermissionsInterceptor } from 'src/shared/interceptors/current-user-project-permissions.interceptor';
+import {
+  PROJECT_CREATE_ROLES,
+  PROJECT_READ_ROLES,
+  TASK_CREATE_ROLES,
+  TASK_READ_ROLES,
+  TASK_UPDATE_ROLES,
+} from '../permissions/permissions.service';
+import { UpdateTaskDto } from '../tasks/dto/update-task.dto';
 @Controller('workspaces')
 export class WorkspacesController {
   constructor(
@@ -101,14 +108,7 @@ export class WorkspacesController {
     return await this.projectsService.findProjects(query, slug);
   }
 
-  @UseGuards(
-    JWTAuthGuard,
-    WorkspaceRoleGuard([
-      WorkspaceRole.Owner,
-      WorkspaceRole.Owner,
-      WorkspaceRole.Member,
-    ]),
-  )
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
   @Post(':workspaceSlug/projects')
   async createWorkspaceProject(
     @CurrentUser() user: AuthUser,
@@ -118,20 +118,7 @@ export class WorkspacesController {
     return await this.projectsService.create(user.id, slug, payload);
   }
 
-  @UseGuards(
-    JWTAuthGuard,
-    ProjectRoleGuard([
-      ProjectRole.Product_Owner,
-      ProjectRole.Tech_Lead,
-      ProjectRole.Project_Manager,
-      ProjectRole.Designer,
-      ProjectRole.DevOps,
-      ProjectRole.Developer,
-      ProjectRole.QC,
-      ProjectRole.Member,
-      ProjectRole.Owner,
-    ]),
-  )
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
   @UseInterceptors(CurrentUserProjectPermissionsInterceptor)
   @Get(':workspaceSlug/projects/:projectSlug')
   async getProjectDetails(
@@ -141,20 +128,7 @@ export class WorkspacesController {
     return await this.projectsService.getProjectBySlug(pjSlug, wsSlug);
   }
 
-  @UseGuards(
-    JWTAuthGuard,
-    ProjectRoleGuard([
-      ProjectRole.Product_Owner,
-      ProjectRole.Tech_Lead,
-      ProjectRole.Project_Manager,
-      ProjectRole.Designer,
-      ProjectRole.DevOps,
-      ProjectRole.Developer,
-      ProjectRole.QC,
-      ProjectRole.Member,
-      ProjectRole.Owner,
-    ]),
-  )
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_READ_ROLES))
   @UseInterceptors(CurrentUserProjectPermissionsInterceptor)
   @Get(':workspaceSlug/projects/:projectSlug/tasks')
   async getTasksByProjectSlug(
@@ -165,20 +139,16 @@ export class WorkspacesController {
     return { tasks };
   }
 
-  @UseGuards(
-    JWTAuthGuard,
-    ProjectRoleGuard([
-      ProjectRole.Product_Owner,
-      ProjectRole.Tech_Lead,
-      ProjectRole.Project_Manager,
-      ProjectRole.Designer,
-      ProjectRole.DevOps,
-      ProjectRole.Developer,
-      ProjectRole.QC,
-      ProjectRole.Member,
-      ProjectRole.Owner,
-    ]),
-  )
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/tasks/:taskId')
+  async getTaskById(
+    @Param('projectSlug') pjSlug: string,
+    @Param('taskId') taskId: string,
+  ) {
+    return await this.tasksService.getTaskById(taskId, pjSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_CREATE_ROLES))
   @Post(':workspaceSlug/projects/:projectSlug/tasks')
   async createProjectTask(
     @CurrentUser() user: { id: string },
@@ -192,5 +162,25 @@ export class WorkspacesController {
       pjSlug,
       payload,
     );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_UPDATE_ROLES))
+  @Patch(':workspaceSlug/projects/:projectSlug/tasks/:taskId')
+  async updateTask(
+    @Param('workspaceSlug') wsSlug: string,
+    @Param('projectSlug') pjSlug: string,
+    @Param('taskId') taskId: string,
+    @Body() payload: UpdateTaskDto,
+  ) {
+    return await this.tasksService.updateTask(wsSlug, pjSlug, taskId, payload);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/members')
+  async getProjectMembers(
+    @Param('workspaceSlug') wsSlug: string,
+    @Param('projectSlug') pjSlug: string,
+  ) {
+    return await this.projectsService.getProjectMembers(pjSlug, wsSlug);
   }
 }

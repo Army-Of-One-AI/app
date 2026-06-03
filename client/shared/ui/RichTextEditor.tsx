@@ -145,7 +145,7 @@ function EditorTool({
         flex h-8 w-8 items-center justify-center rounded-md transition
         ${
           active
-            ? "bg-[var(--primary)] text-[var(--text-primary)]"
+            ? "bg-[var(--primary)] text-[var(--on-primary)]"
             : classNames.text.secondary
         }
         hover:bg-[var(--surface)]

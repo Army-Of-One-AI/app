@@ -1,4 +1,4 @@
-import { ProjectStatus } from "@/shared/types/enums";
+import { ProjectRole, ProjectStatus } from "@/shared/types/enums";
 import { CurrentProjectUser } from "@/shared/types/types";
 
 export type CreateProjectPayload = {
@@ -46,4 +46,13 @@ export type FindProjectsResponse = {
     total: number;
     totalPages: number;
   };
+};
+
+export type ProjectMember = {
+  id: string;
+  username: string;
+  email: string;
+  avatarURL?: string;
+  fullName?: string;
+  role: ProjectRole;
 };

@@ -8,12 +8,13 @@ export const classNames = {
   text: {
     primary: "text-[var(--text-primary)]",
     secondary: "text-[var(--text-secondary)]",
+    danger: "text-[var(--danger-text)]",
   },
 
   /* Brand */
   primary: {
     bg: "bg-[var(--primary)]",
-    text: "text-[var(--text-primary)]",
+    text: "text-[var(--on-primary)]",
   },
 
   secondary: {
@@ -25,6 +26,14 @@ export const classNames = {
   success: {
     bg: "bg-[var(--success)]",
     text: "text-[var(--text-primary)]",
+  },
+
+  danger: {
+    bg: "bg-[var(--danger-bg)]",
+    border: "border-[var(--danger-border)]",
+    text: "text-[var(--danger-text)]",
+    ring: "focus:ring-2 focus:ring-[var(--focus-danger)]",
+    focus: "focus:border-[var(--danger)]",
   },
 
   accent: {
@@ -73,6 +82,9 @@ export const classNames = {
   hover: {
     surface: "hover:bg-[var(--surface)]",
   },
+
+  overlay: "bg-[var(--overlay)]",
+  skeleton: "bg-[var(--skeleton)]",
 } as const;
 
 export const projectStatusColors = {
@@ -86,4 +98,14 @@ export const projectStatusColors = {
     "bg-[var(--status-completed-bg)] text-[var(--status-completed-text)]",
 
   Archived: "bg-[var(--status-archived-bg)] text-[var(--status-archived-text)]",
+} as const;
+
+export const taskPriorityColors = {
+  Low: "bg-[var(--priority-low-bg)] text-[var(--priority-low-text)]",
+
+  Medium: "bg-[var(--priority-medium-bg)] text-[var(--priority-medium-text)]",
+
+  High: "bg-[var(--priority-high-bg)] text-[var(--priority-high-text)]",
+
+  Urgent: "bg-[var(--priority-critical-bg)] text-[var(--priority-critical-text)]",
 } as const;

@@ -88,7 +88,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                       animationDelay: `${(rowIndex + colIndex) * 80}ms`,
                     }}
                     className={`
-                      h-4 animate-pulse rounded-md bg-neutral-200
+                      h-4 animate-pulse rounded-md ${classNames.skeleton}
                       ${colIndex === 0 ? "w-32" : "w-24"}
                     `}
                   />

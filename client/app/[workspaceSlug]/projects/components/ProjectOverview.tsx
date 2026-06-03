@@ -1,7 +1,11 @@
 import { Project } from "@/features/projects/types";
-import { projectStatusColors } from "@/shared/styles/classNames";
+import { classNames, projectStatusColors } from "@/shared/styles/classNames";
 import Button from "@/shared/ui/Button";
+import { parseRichText } from "@/shared/utils/helpers";
 import { useParams, useRouter } from "next/navigation";
+
+const sectionClassName = `border-b ${classNames.border} p-6`;
+const sectionTitleClassName = `mb-4 text-sm font-semibold uppercase tracking-wide ${classNames.text.secondary}`;
 
 export default function ProjectOverview({
   project,
@@ -15,13 +19,15 @@ export default function ProjectOverview({
   if (!project) return null;
 
   return (
-    <div className="flex h-full flex-col min-w-lg">
-      <div className="border-b border-(--border) p-6">
+    <div className={`flex h-full min-w-lg flex-col ${classNames.text.primary}`}>
+      <div className={sectionClassName}>
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold">{project.name}</h2>
+            <h2 className={`text-xl font-semibold ${classNames.text.primary}`}>
+              {project.name}
+            </h2>
 
-            <p className="mt-1 text-sm text-(--text-secondary)">
+            <p className={`mt-1 text-sm ${classNames.text.secondary}`}>
               {project.slug}
             </p>
           </div>
@@ -42,21 +48,21 @@ export default function ProjectOverview({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <section className="border-b border-[var(--border)] p-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+        <section className={sectionClassName}>
+          <h3 className={sectionTitleClassName}>
             Description
           </h3>
 
           <div
             className="rich-text max-h-[200px] overflow-y-auto"
             dangerouslySetInnerHTML={{
-              __html: project.description?.html ?? "",
+              __html: parseRichText(project.description).html,
             }}
           />
         </section>
 
-        <section className="border-b border-[var(--border)] p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+        <section className={sectionClassName}>
+          <h3 className={sectionTitleClassName}>
             Details
           </h3>
 
@@ -71,8 +77,8 @@ export default function ProjectOverview({
           </div>
         </section>
 
-        <section className="border-b border-[var(--border)] p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+        <section className={sectionClassName}>
+          <h3 className={sectionTitleClassName}>
             Progress
           </h3>
 
@@ -82,39 +88,40 @@ export default function ProjectOverview({
               <span>18 / 42</span>
             </div>
 
-            <div className="h-2 overflow-hidden rounded-full bg-[var(--secondary)]">
+            <div className={`h-2 overflow-hidden rounded-full ${classNames.secondary.bg}`}>
               <div
-                className="h-full rounded-full bg-[var(--primary)]"
+                className={`h-full rounded-full ${classNames.primary.bg}`}
                 style={{ width: "43%" }}
               />
             </div>
           </div>
         </section>
 
-        <section className="border-b border-[var(--border)] p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+        <section className={sectionClassName}>
+          <h3 className={sectionTitleClassName}>
             Members
           </h3>
 
           <div className="flex -space-x-2">
             {project.members.map((m) => (
-              <div
-                key={m.id}
-                className="
-                flex
-                h-9
-                w-9
+	              <div
+	                key={m.id}
+	                className={`
+	                flex
+	                h-9
+	                w-9
                 items-center
-                justify-center
-                rounded-full
-                border-2
-                border-white
-                bg-[var(--primary)]
-                text-xs
-                font-semibold
-                tracking-widest
-              "
-              >
+	                justify-center
+	                rounded-full
+	                border-2
+	                border-[var(--surface)]
+	                ${classNames.primary.bg}
+	                ${classNames.primary.text}
+	                text-xs
+	                font-semibold
+	                tracking-widest
+	              `}
+	              >
                 {m.fullName
                   ?.split(" ")
                   .map((str) => str.charAt(0))
@@ -126,8 +133,8 @@ export default function ProjectOverview({
           </div>
         </section>
 
-        <section className="border-b border-[var(--border)] p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+        <section className={sectionClassName}>
+          <h3 className={sectionTitleClassName}>
             Statistics
           </h3>
 
@@ -150,7 +157,7 @@ export default function ProjectOverview({
         </section>
 
         <section className="px-6 max-h-[200px] pt-6 pb-10 overflow-y-auto">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          <h3 className={sectionTitleClassName}>
             Recent Activity
           </h3>
 
@@ -164,7 +171,7 @@ export default function ProjectOverview({
         </section>
       </div>
 
-      <div className="border-t border-[var(--border)] bg-[var(--surface)] py-6 px-4 sticky bottom-0 w-full">
+      <div className={`sticky bottom-0 w-full border-t px-4 py-6 ${classNames.border} ${classNames.surface}`}>
         <div className="flex gap-2">
           <Button
             onClick={() =>
@@ -193,19 +200,21 @@ export default function ProjectOverview({
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-[var(--text-secondary)]">{label}</span>
+      <span className={classNames.text.secondary}>{label}</span>
 
-      <span>{value}</span>
+      <span className={classNames.text.primary}>{value}</span>
     </div>
   );
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--border)] p-3">
-      <div className="text-xl font-semibold">{value}</div>
+    <div className={`rounded-lg border p-3 ${classNames.card.border}`}>
+      <div className={`text-xl font-semibold ${classNames.text.primary}`}>
+        {value}
+      </div>
 
-      <div className="text-xs text-[var(--text-secondary)]">{label}</div>
+      <div className={`text-xs ${classNames.text.secondary}`}>{label}</div>
     </div>
   );
 }
@@ -213,8 +222,8 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function ActivityItem({ text, time }: { text: string; time: string }) {
   return (
     <div>
-      <div className="text-sm">{text}</div>
-      <div className="text-xs text-[var(--text-secondary)]">{time}</div>
+      <div className={`text-sm ${classNames.text.primary}`}>{text}</div>
+      <div className={`text-xs ${classNames.text.secondary}`}>{time}</div>
     </div>
   );
 }

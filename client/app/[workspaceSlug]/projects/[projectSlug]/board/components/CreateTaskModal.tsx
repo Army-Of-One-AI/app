@@ -6,6 +6,16 @@ import RichTextEditor from "@/shared/ui/RichTextEditor";
 import Button from "@/shared/ui/Button";
 import { useState } from "react";
 
+const labelClassName = `mb-1 block text-sm font-medium ${classNames.text.primary}`;
+const fieldClassName = `
+  h-10 w-full rounded-lg border px-3 text-sm outline-none transition
+  ${classNames.input.bg}
+  ${classNames.input.border}
+  ${classNames.input.text}
+  ${classNames.input.placeholder}
+  ${classNames.input.focus}
+`;
+
 export type TaskDescription = {
   html: string;
   plainText: string;
@@ -65,27 +75,27 @@ export default function CreateTaskModal({
   return (
     <form onSubmit={handleSubmit} className="w-125 max-w-[100vw] space-y-4">
       <div>
-        <label className="mb-1 block text-sm font-medium">Title</label>
+        <label className={labelClassName}>Title</label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Task title"
-          className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+          className={fieldClassName}
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Description</label>
+        <label className={labelClassName}>Description</label>
         <RichTextEditor value={description} onChange={setDescription} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">Status</label>
+          <label className={labelClassName}>Status</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as TaskStatus)}
-            className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+            className={fieldClassName}
           >
             {Object.values(TaskStatus).map((val) => (
               <option key={val} value={val}>
@@ -96,11 +106,11 @@ export default function CreateTaskModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Priority</label>
+          <label className={labelClassName}>Priority</label>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value as TaskPriority)}
-            className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+            className={fieldClassName}
           >
             {Object.values(TaskPriority).map((val) => (
               <option key={val} value={val}>
@@ -113,24 +123,24 @@ export default function CreateTaskModal({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">Due date</label>
+          <label className={labelClassName}>Due date</label>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+            className={fieldClassName}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Estimate</label>
+          <label className={labelClassName}>Estimate</label>
           <input
             type="number"
             min={0}
             value={estimate}
             onChange={(e) => setEstimate(e.target.value)}
             placeholder="Hours"
-            className={`h-10 w-full rounded-lg border bg-transparent px-3 text-sm outline-none ${classNames.border}`}
+            className={fieldClassName}
           />
         </div>
       </div>

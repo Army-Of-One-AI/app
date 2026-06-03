@@ -16,9 +16,12 @@ export default function FilterPill({
       className={`
         rounded-full border px-4 py-1 text-sm transition-all
         ${classNames.border}
-        ${active ? classNames.text.primary : classNames.text.secondary}
-        ${active ? "border-[var(--primary)] bg-[var(--btn-primary-bg)]" : ""}
-        hover:bg-[var(--surface)]
+        ${active ? "text-[var(--on-primary)]" : classNames.text.secondary}
+        ${
+          active
+            ? "border-[var(--primary)] bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-bg-hover)]"
+            : "hover:bg-[var(--surface)]"
+        }
       `}
     >
       {children}

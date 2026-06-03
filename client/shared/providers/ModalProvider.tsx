@@ -3,6 +3,7 @@
 import { createContext, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
+import { classNames } from "@/shared/styles/classNames";
 
 type OpenModalOption = {
   title?: string;
@@ -58,7 +59,7 @@ export default function ModalProvider({
             onClick={(e) =>
               e.target === e.currentTarget && setModalContent(null)
             }
-            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/20"
+            className={`fixed inset-0 z-[999] flex items-center justify-center ${classNames.overlay}`}
           >
             <motion.div
               initial={{
@@ -82,15 +83,15 @@ export default function ModalProvider({
                 damping: 35,
                 mass: 0.8,
               }}
-              className="flex flex-col rounded-lg bg-white p-6 shadow-2xl"
+              className={`flex flex-col rounded-lg ${classNames.surface} p-6 shadow-2xl`}
             >
-              <div className="flex w-full flex-row items-center justify-between border-b border-solid border-black/15 pb-4">
-                <div className="text-md font-bold text-black/60">
+              <div className={`flex w-full flex-row items-center justify-between border-b border-solid ${classNames.border} pb-4`}>
+                <div className={`text-md font-bold ${classNames.text.secondary}`}>
                   {modalTitle}
                 </div>
 
                 <button onClick={() => setModalContent(null)}>
-                  <X className="text-black/50" />
+                  <X className={classNames.text.secondary} />
                 </button>
               </div>
 
