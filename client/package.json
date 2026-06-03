@@ -23,7 +23,9 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.77.0",
     "react-redux": "^9.3.0",
+    "react-toastify": "^11.1.0",
     "slugify": "^1.6.9",
+    "toastify": "^2.0.1",
     "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {

@@ -44,6 +44,11 @@ export default function TeamRoleGuard(roles: TeamRole[]): Type<CanActivate> {
             slug: teamSlug,
             workspace: {
               slug: workspaceSlug,
+              members: {
+                some: {
+                  member_id: user.id,
+                },
+              },
             },
           },
         },

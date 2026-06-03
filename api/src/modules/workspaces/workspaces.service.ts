@@ -142,9 +142,7 @@ export class WorkspacesService {
   async findWorkspaceProjects(workspaceSlug: string) {
     const projects = await this.prisma.project.findMany({
       where: {
-        deleted_at: {
-          not: null,
-        },
+        deleted_at: null,
         workspace: {
           slug: workspaceSlug,
         },

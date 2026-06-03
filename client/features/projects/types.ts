@@ -1,4 +1,5 @@
 import { ProjectStatus } from "@/shared/types/enums";
+import { CurrentProjectUser } from "@/shared/types/types";
 
 export type CreateProjectPayload = {
   name: string;
@@ -34,6 +35,7 @@ export type Project = {
   }[];
   createdAt: string;
   updatedAt: string | null;
+  currentUser: CurrentProjectUser;
 };
 
 export type FindProjectsResponse = {

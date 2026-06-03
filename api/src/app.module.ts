@@ -6,6 +6,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { TasksModule } from './modules/tasks/tasks.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { ProjectsModule } from './modules/projects/projects.module';
     UsersModule,
     WorkspacesModule,
     ProjectsModule,
+    TasksModule,
+    PermissionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -16,14 +16,6 @@ const projectNavItems = [
     label: "Board",
     href: "/board",
   },
-  {
-    label: "Members",
-    href: "/members",
-  },
-  {
-    label: "Settings",
-    href: "/settings",
-  },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -63,7 +55,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* Project Navigation */}
         <nav className="flex items-center gap-1 border-b border-[var(--border)]">
           {projectNavItems.map((item) => {
             const href = `${projectBaseUrl}${item.href}`;

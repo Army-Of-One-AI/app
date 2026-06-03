@@ -43,25 +43,59 @@ export default function ModalProvider({
         {modalContent && (
           <motion.div
             key="modal"
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0 }}
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+            exit={{
+              opacity: 0,
+            }}
+            transition={{
+              duration: 0.15,
+            }}
             onClick={(e) =>
               e.target === e.currentTarget && setModalContent(null)
             }
-            className="fixed inset-0 z-[999] flex items-center justify-center bg-transparent"
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/20"
           >
-            <div className="p-6 flex flex-col bg-[white] shadow-2xl rounded-lg">
-              <div className="w-full pb-4 flex flex-row items-center justify-between border-b border-solid border-black/15">
-                <div className="font-bold text-black/60 text-md">
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 40,
+                scale: 0.98,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                y: 40,
+                scale: 0.98,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 450,
+                damping: 35,
+                mass: 0.8,
+              }}
+              className="flex flex-col rounded-lg bg-white p-6 shadow-2xl"
+            >
+              <div className="flex w-full flex-row items-center justify-between border-b border-solid border-black/15 pb-4">
+                <div className="text-md font-bold text-black/60">
                   {modalTitle}
                 </div>
-                <div onClick={() => setModalContent(null)}>
+
+                <button onClick={() => setModalContent(null)}>
                   <X className="text-black/50" />
-                </div>
+                </button>
               </div>
+
               <div className="pt-5">{modalContent}</div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

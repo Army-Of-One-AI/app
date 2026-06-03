@@ -1,5 +1,10 @@
 "use client";
 
+import { toast, ToastContainer } from "react-toastify";
+import useTasksByProjectSlug from "@/features/tasks/hooks/useTasksByProjectSlug";
+import { Task } from "@/features/tasks/types";
+import { TaskStatus } from "@/shared/types/enums";
+import useCreateTask from "@/features/tasks/hooks/useCreateTask";
 import {
   DndContext,
   type DragEndEvent,
@@ -18,73 +23,54 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import CreateTaskModal from "./components/CreateTaskModal";
+import useModal from "@/shared/hooks/useModal";
+import TaskDetailsModal from "./components/TaskDetailsModal";
 
-type TaskStatus = "Todo" | "InProgress" | "Review" | "Done";
+const columns = [
+  { key: TaskStatus.Todo, title: "To do" },
+  { key: TaskStatus.In_Progress, title: "In progress" },
+  { key: TaskStatus.Review, title: "Review" },
+  { key: TaskStatus.Done, title: "Done" },
+] as const;
 
-type Task = {
-  id: string;
-  title: string;
-  description?: string;
-  assignee?: string;
-  priority: "Low" | "Medium" | "High";
-  dueDate?: string;
-  status: TaskStatus;
-};
-
-const columns: { key: TaskStatus; title: string }[] = [
-  { key: "Todo", title: "To do" },
-  { key: "InProgress", title: "In progress" },
-  { key: "Review", title: "Review" },
-  { key: "Done", title: "Done" },
-];
-
-const initialTasks: Task[] = [
-  {
-    id: "AO-101",
-    title: "Design project details drawer",
-    description: "Create Jira-style right drawer for project information.",
-    assignee: "HV",
-    priority: "High",
-    dueDate: "Jun 24",
-    status: "Todo",
-  },
-  {
-    id: "AO-102",
-    title: "Create project API integration",
-    assignee: "LV",
-    priority: "Medium",
-    dueDate: "Jun 26",
-    status: "InProgress",
-  },
-  {
-    id: "AO-103",
-    title: "Improve rich text description UI",
-    assignee: "AN",
-    priority: "Medium",
-    status: "Review",
-  },
-  {
-    id: "AO-104",
-    title: "Add workspace validation errors",
-    assignee: "HV",
-    priority: "Low",
-    dueDate: "Jun 20",
-    status: "Done",
-  },
-];
+type BoardStatus = (typeof columns)[number]["key"];
 
 export default function ProjectBoardPage() {
   const params = useParams();
+  const workspaceSlug = params.workspaceSlug as string;
   const projectSlug = params.projectSlug as string;
 
+  const { openModal, closeModal } = useModal();
+
+  const {
+    data: apiTasks,
+    isLoading,
+    error,
+  } = useTasksByProjectSlug(projectSlug, workspaceSlug);
+
+  const createTaskMutation = useCreateTask(workspaceSlug, projectSlug);
+
   const [mounted, setMounted] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [boardTasks, setBoardTasks] = useState<Task[]>([]);
   const [search, setSearch] = useState("");
+
+  const canCreateTask =
+    apiTasks?.currentUser.permissions.task.canCreateTask ?? false;
+
+  const canUpdateTaskStatus =
+    apiTasks?.currentUser.permissions.task.canUpdateTaskStatus ?? false;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!apiTasks) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBoardTasks(apiTasks.tasks);
+  }, [apiTasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -97,28 +83,30 @@ export default function ProjectBoardPage() {
   const filteredTasks = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    if (!keyword) return tasks;
+    if (!keyword) return boardTasks;
 
-    return tasks.filter(
+    return boardTasks.filter(
       (task) =>
         task.title.toLowerCase().includes(keyword) ||
-        task.id.toLowerCase().includes(keyword)
+        task.id.toLowerCase().includes(keyword) ||
+        task.assignee?.fullName?.toLowerCase().includes(keyword)
     );
-  }, [tasks, search]);
+  }, [boardTasks, search]);
 
   const tasksByStatus = useMemo(() => {
-    return columns.reduce<Record<TaskStatus, Task[]>>(
+    return columns.reduce<Record<BoardStatus, Task[]>>(
       (acc, column) => {
-        acc[column.key] = filteredTasks.filter(
-          (task) => task.status === column.key
-        );
+        acc[column.key] = filteredTasks
+          .filter((task) => task.status === column.key)
+          .sort((a, b) => a.position - b.position);
+
         return acc;
       },
       {
-        Todo: [],
-        InProgress: [],
-        Review: [],
-        Done: [],
+        [TaskStatus.Todo]: [],
+        [TaskStatus.In_Progress]: [],
+        [TaskStatus.Review]: [],
+        [TaskStatus.Done]: [],
       }
     );
   }, [filteredTasks]);
@@ -129,11 +117,11 @@ export default function ProjectBoardPage() {
     if (!over) return;
 
     const taskId = String(active.id);
-    const nextStatus = String(over.id) as TaskStatus;
+    const nextStatus = String(over.id) as BoardStatus;
 
     if (!columns.some((column) => column.key === nextStatus)) return;
 
-    setTasks((current) =>
+    setBoardTasks((current) =>
       current.map((task) =>
         task.id === taskId
           ? {
@@ -143,6 +131,71 @@ export default function ProjectBoardPage() {
           : task
       )
     );
+
+    // TODO: call update task status API here
+  };
+
+  const handleOpenTaskDetails = (task: Task) => {
+    openModal({
+      title: "Task details",
+      modalContent: (
+        <TaskDetailsModal
+          task={task}
+          canUpdateTask={
+            apiTasks?.currentUser.permissions.task.canUpdateTask ?? false
+          }
+          canAssignTask={
+            apiTasks?.currentUser.permissions.task.canAssignTask ?? false
+          }
+          onClose={closeModal}
+          onUpdate={(updatedTask) => {
+            setBoardTasks((curr) =>
+              curr.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+            );
+
+            closeModal();
+          }}
+        />
+      ),
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-[var(--text-secondary)]">
+        Loading tasks...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-red-500">
+        Failed to load tasks.
+      </div>
+    );
+  }
+
+  const handleOpenCreateTaskModal = (status: BoardStatus = TaskStatus.Todo) => {
+    if (!canCreateTask) return;
+
+    openModal({
+      title: "Create new task",
+      modalContent: (
+        <CreateTaskModal
+          defaultStatus={status}
+          isLoading={createTaskMutation.isPending}
+          onClose={closeModal}
+          onCreate={async (values) => {
+            const newTask = await createTaskMutation.mutateAsync(values);
+
+            setBoardTasks((curr) => [...curr, newTask]);
+
+            closeModal();
+          }}
+        />
+      ),
+    });
   };
 
   return (
@@ -168,11 +221,27 @@ export default function ProjectBoardPage() {
       </div>
 
       {mounted ? (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <BoardColumns tasksByStatus={tasksByStatus} />
+        <DndContext
+          sensors={sensors}
+          onDragEnd={canUpdateTaskStatus ? handleDragEnd : undefined}
+        >
+          <BoardColumns
+            canCreateTask={canCreateTask}
+            tasksByStatus={tasksByStatus}
+            canUpdateTaskStatus={canUpdateTaskStatus}
+            onCreateTask={handleOpenCreateTaskModal}
+            onOpenTaskDetails={handleOpenTaskDetails}
+          />
         </DndContext>
       ) : (
-        <BoardColumns tasksByStatus={tasksByStatus} disabled />
+        <BoardColumns
+          canCreateTask={canCreateTask}
+          tasksByStatus={tasksByStatus}
+          disabled
+          canUpdateTaskStatus={canUpdateTaskStatus}
+          onCreateTask={handleOpenCreateTaskModal}
+          onOpenTaskDetails={handleOpenTaskDetails}
+        />
       )}
     </div>
   );
@@ -181,9 +250,17 @@ export default function ProjectBoardPage() {
 function BoardColumns({
   tasksByStatus,
   disabled = false,
+  onCreateTask,
+  canCreateTask,
+  canUpdateTaskStatus,
+  onOpenTaskDetails,
 }: {
-  tasksByStatus: Record<TaskStatus, Task[]>;
+  tasksByStatus: Record<BoardStatus, Task[]>;
   disabled?: boolean;
+  onCreateTask: (status: BoardStatus) => void;
+  canCreateTask: boolean;
+  canUpdateTaskStatus: boolean;
+  onOpenTaskDetails: (task: Task) => void;
 }) {
   return (
     <div className="grid flex-1 grid-cols-1 gap-4 overflow-x-auto pb-4 md:grid-cols-2 xl:grid-cols-4">
@@ -194,6 +271,10 @@ function BoardColumns({
           title={column.title}
           tasks={tasksByStatus[column.key]}
           disabled={disabled}
+          canUpdateTaskStatus={canUpdateTaskStatus}
+          canCreateTask={canCreateTask}
+          onCreateTask={onCreateTask}
+          onOpenTaskDetails={onOpenTaskDetails}
         />
       ))}
     </div>
@@ -205,15 +286,23 @@ function KanbanColumn({
   title,
   tasks,
   disabled,
+  canCreateTask,
+  onCreateTask,
+  canUpdateTaskStatus,
+  onOpenTaskDetails,
 }: {
-  id: TaskStatus;
+  id: BoardStatus;
   title: string;
   tasks: Task[];
+  canCreateTask: boolean;
   disabled?: boolean;
+  onCreateTask: (status: BoardStatus) => void;
+  canUpdateTaskStatus: boolean;
+  onOpenTaskDetails: (task: Task) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
-    disabled,
+    disabled: disabled || !canUpdateTaskStatus,
   });
 
   return (
@@ -241,22 +330,41 @@ function KanbanColumn({
 
       <div className="space-y-3">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} disabled={disabled} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            canUpdateTaskStatus={canUpdateTaskStatus}
+            disabled={disabled || !canUpdateTaskStatus}
+            onOpenTaskDetails={onOpenTaskDetails}
+          />
         ))}
 
-        <button
-          type="button"
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--primary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
-        >
-          <Plus size={15} />
-          Add task
-        </button>
+        {canCreateTask && (
+          <button
+            type="button"
+            onClick={() => onCreateTask(id)}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--primary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
+          >
+            <Plus size={15} />
+            Add task
+          </button>
+        )}
       </div>
     </section>
   );
 }
 
-function TaskCard({ task, disabled }: { task: Task; disabled?: boolean }) {
+function TaskCard({
+  task,
+  disabled,
+  canUpdateTaskStatus,
+  onOpenTaskDetails,
+}: {
+  task: Task;
+  disabled?: boolean;
+  canUpdateTaskStatus: boolean;
+  onOpenTaskDetails: (task: Task) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -271,11 +379,35 @@ function TaskCard({ task, disabled }: { task: Task; disabled?: boolean }) {
     position: isDragging ? "relative" : undefined,
   };
 
+  const assigneeInitial =
+    task.assignee?.fullName
+      ?.split(" ")
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "?";
+
+  const handleDragAttempt = () => {
+    if (!canUpdateTaskStatus) {
+      toast.error("You do not have permission to move tasks", {
+        toastId: "task-move-permission",
+      });
+    }
+  };
+
   return (
     <article
+      onDoubleClick={() => onOpenTaskDetails(task)}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+
+        if (!canUpdateTaskStatus) {
+          handleDragAttempt();
+        }
+      }}
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs ${
+      className={`rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs cursor-pointer ${
         isDragging
           ? "scale-[1.02] opacity-80 shadow-lg"
           : "transition-shadow hover:shadow-sm"
@@ -294,18 +426,29 @@ function TaskCard({ task, disabled }: { task: Task; disabled?: boolean }) {
 
         <button
           type="button"
-          {...(!disabled ? listeners : {})}
-          {...(!disabled ? attributes : {})}
-          className="cursor-grab rounded-md p-1 text-[var(--text-secondary)] transition hover:bg-[var(--secondary)] active:cursor-grabbing"
+          onPointerDown={!canUpdateTaskStatus ? handleDragAttempt : undefined}
+          {...(canUpdateTaskStatus ? listeners : {})}
+          {...(canUpdateTaskStatus ? attributes : {})}
+          className={`
+          rounded-md p-1 transition
+    ${
+      canUpdateTaskStatus
+        ? "cursor-grab text-[var(--text-secondary)] hover:bg-[var(--secondary)] active:cursor-grabbing"
+        : "cursor-not-allowed text-[var(--text-secondary)]/50"
+    }
+  `}
         >
           <GripVertical size={16} />
         </button>
       </div>
 
       {task.description && (
-        <p className="mb-4 line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
-          {task.description}
-        </p>
+        <div
+          className="rich-text max-h-[200px] overflow-y-auto"
+          dangerouslySetInnerHTML={{
+            __html: task.description?.html ?? "",
+          }}
+        />
       )}
 
       <div className="flex items-center justify-between gap-3">
@@ -313,7 +456,7 @@ function TaskCard({ task, disabled }: { task: Task; disabled?: boolean }) {
           {task.dueDate && (
             <>
               <CalendarDays size={14} />
-              <span>{task.dueDate}</span>
+              <span>{new Date(task.dueDate).toLocaleDateString()}</span>
             </>
           )}
         </div>
@@ -321,11 +464,15 @@ function TaskCard({ task, disabled }: { task: Task; disabled?: boolean }) {
         <div className="flex items-center gap-2">
           <PriorityBadge priority={task.priority} />
 
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-[var(--text-primary)]">
-            {task.assignee ?? "?"}
+          <div
+            title={task.assignee?.fullName ?? "Unassigned"}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-[var(--text-primary)]"
+          >
+            {assigneeInitial}
           </div>
         </div>
       </div>
+      <ToastContainer />
     </article>
   );
 }
@@ -335,6 +482,7 @@ function PriorityBadge({ priority }: { priority: Task["priority"] }) {
     Low: "bg-emerald-50 text-emerald-700",
     Medium: "bg-amber-50 text-amber-700",
     High: "bg-red-50 text-red-700",
+    Urgent: "bg-red-100 text-red-800",
   }[priority];
 
   return (

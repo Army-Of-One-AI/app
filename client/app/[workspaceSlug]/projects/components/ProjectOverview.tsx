@@ -166,7 +166,14 @@ export default function ProjectOverview({
 
       <div className="border-t border-[var(--border)] bg-[var(--surface)] py-6 px-4 sticky bottom-0 w-full">
         <div className="flex gap-2">
-          <Button className="flex-1">Edit Project</Button>
+          <Button
+            onClick={() =>
+              router.push(`/${workspaceSlug}/projects/${project.slug}`)
+            }
+            className="flex-1"
+          >
+            Overview
+          </Button>
 
           <Button
             onClick={() =>
