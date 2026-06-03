@@ -16,6 +16,10 @@ const projectNavItems = [
     label: "Board",
     href: "/board",
   },
+  {
+    label: "Documents",
+    href: "/documents",
+  },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -34,11 +38,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex flex-col gap-3">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1 text-sm">
+        <div className="flex items-center gap-1 text-sm px-4">
           {!currentPage ? (
-            <span className="font-medium">{projectSlug}</span>
+            <>
+              <Link
+                href={`/${workspaceSlug}/projects`}
+                className="font-medium hover:underline"
+              >
+                Projects
+              </Link>
+
+              <ChevronRight size={14} />
+
+              <span className="font-medium">{projectSlug}</span>
+            </>
           ) : (
             <>
+              <Link href={"/"} className="font-medium hover:underline">
+                Projects
+              </Link>
+
+              <ChevronRight size={14} />
+
               <Link
                 href={projectBaseUrl}
                 className="font-medium hover:underline"

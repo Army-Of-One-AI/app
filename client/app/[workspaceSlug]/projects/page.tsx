@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Search } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { classNames, projectStatusColors } from "@/shared/styles/classNames";
@@ -24,6 +24,7 @@ import { useMediaQuery } from "usehooks-ts";
 import ProjectOverview from "./components/ProjectOverview";
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const params = useParams<{ workspaceSlug: string }>();
   const matches = useMediaQuery("(min-width: 768px)");
   const workspaceSlug = params.workspaceSlug;
@@ -158,6 +159,9 @@ export default function ProjectsPage() {
                 onClick={() => {
                   setSelectedProjectId(rowVal.id);
                 }}
+                onDoubleClick={() => {
+                  router.push(`/${workspaceSlug}/projects/${rowVal.slug}`);
+                }}
               >
                 {rowVal.name}
               </button>
@@ -167,25 +171,9 @@ export default function ProjectsPage() {
             field: "members",
             label: "Members",
             render: (rowValue) => {
-              const members = Array(10)
-                .fill(rowValue.members[0])
-                .map(
-                  (
-                    m: {
-                      id: string;
-                      username: string;
-                      email: string;
-                      avatarURL?: string;
-                      fullName?: string;
-                    },
-                    i
-                  ) => ({
-                    ...m,
-                    id: `${m.id}_${i + 1}`,
-                  })
-                );
-              const visibleMembers = members.slice(0, 5);
-              const remainingCount = members.length - visibleMembers.length;
+              const visibleMembers = rowValue.members.slice(0, 5);
+              const remainingCount =
+                rowValue.members.length - visibleMembers.length;
 
               return (
                 <div className="flex items-center">

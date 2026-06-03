@@ -85,8 +85,12 @@ export default function ModalProvider({
               }}
               className={`flex flex-col rounded-lg ${classNames.surface} p-6 shadow-2xl`}
             >
-              <div className={`flex w-full flex-row items-center justify-between border-b border-solid ${classNames.border} pb-4`}>
-                <div className={`text-md font-bold ${classNames.text.secondary}`}>
+              <div
+                className={`flex w-full flex-row items-center justify-between border-b border-solid ${classNames.border} pb-4`}
+              >
+                <div
+                  className={`text-md font-bold ${classNames.text.secondary}`}
+                >
                   {modalTitle}
                 </div>
 

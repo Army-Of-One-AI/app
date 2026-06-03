@@ -1,9 +1,19 @@
 "use client";
 
+import useAuthentication from "@/features/auth/hooks/useAuthentication";
 import { classNames } from "@/shared/styles/classNames";
 import { motion } from "motion/react";
+import { useEffect } from "react";
 
 export default function LoginPage() {
+  const { isAuthenticated } = useAuthentication();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      window.location.assign("/");
+    }
+  }, [isAuthenticated]);
+
   const handleGoogleLogin = () => {
     window.location.assign(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`);
   };
@@ -26,7 +36,9 @@ export default function LoginPage() {
         className="relative z-10 w-full max-w-[340px]"
       >
         <div className="mb-10 flex flex-col items-center">
-          <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-full border ${classNames.border} ${classNames.surface} shadow-sm`}>
+          <div
+            className={`mb-5 flex h-12 w-12 items-center justify-center rounded-full border ${classNames.border} ${classNames.surface} shadow-sm`}
+          >
             <svg width="22" height="22" viewBox="0 0 100 100" fill="none">
               <path
                 d="M20 20L80 80"
@@ -53,7 +65,9 @@ export default function LoginPage() {
             Log in to Army of One AI
           </h1>
 
-          <p className={`mt-2 text-center text-sm ${classNames.text.secondary}`}>
+          <p
+            className={`mt-2 text-center text-sm ${classNames.text.secondary}`}
+          >
             Manage projects, tasks and workflows in one place.
           </p>
         </div>

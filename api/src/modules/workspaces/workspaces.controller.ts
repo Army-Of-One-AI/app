@@ -54,8 +54,14 @@ export class WorkspacesController {
     ]),
   )
   @Get(':workspaceSlug')
-  async getWorkspaceDetails(@Param('workspaceSlug') slug: string) {
-    return await this.workspacesService.getWorkspaceDetailsBySlug(slug);
+  async getWorkspaceDetails(
+    @CurrentUser() user: { id: string },
+    @Param('workspaceSlug') slug: string,
+  ) {
+    return await this.workspacesService.getWorkspaceDetailsBySlug(
+      slug,
+      user.id,
+    );
   }
 
   @UseGuards(JWTAuthGuard)

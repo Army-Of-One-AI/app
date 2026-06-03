@@ -9,6 +9,7 @@ export type GetCurrentUserInfoResponse = {
   phoneNo: string;
   title: string;
   createdAt: string;
+  lastUsedWorkspaceId: string | null;
   workspaces: {
     id: string;
     name: string;

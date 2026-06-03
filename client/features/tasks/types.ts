@@ -3,6 +3,7 @@ import { TaskPriority, TaskStatus } from "@/shared/types/enums";
 export type TaskUser = {
   id: string;
   email: string;
+  username: string;
   fullName: string | null;
   avatarURL: string | null;
 };
@@ -31,4 +32,8 @@ export type Task = {
 
   assignee: TaskUser | null;
   creator: TaskUser | null;
+
+  subtasks: Task[];
+
+  parentTask: Task | null;
 };

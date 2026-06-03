@@ -17,7 +17,18 @@ export default function HomePage() {
     }
 
     if (userInfo!.workspaces.length > 0) {
-      router.push(`/${userInfo!.workspaces[0].slug}`);
+      if (userInfo?.lastUsedWorkspaceId) {
+        const workspace = userInfo.workspaces.find(
+          (ele) => ele.id === userInfo.lastUsedWorkspaceId
+        );
+
+        if (workspace) {
+          router.push(`/${workspace.slug}`);
+          return;
+        }
+
+        router.push(`/${userInfo!.workspaces[0].slug}`);
+      }
     } else {
       router.push(`/onboarding`);
     }

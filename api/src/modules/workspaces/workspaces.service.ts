@@ -59,7 +59,7 @@ export class WorkspacesService {
     }
   }
 
-  async getWorkspaceDetailsBySlug(slug: string) {
+  async getWorkspaceDetailsBySlug(slug: string, userId: string) {
     const workspace = await this.prisma.workspace.findUnique({
       where: {
         slug,
@@ -69,6 +69,13 @@ export class WorkspacesService {
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
     }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        last_used_workspace_id: workspace.id,
+      },
+    });
 
     return {
       id: workspace.id,

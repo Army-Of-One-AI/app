@@ -9,12 +9,19 @@ const inter = Inter({
 });
 
 const themeScript = `
+(function () {
   try {
-    var theme = localStorage.getItem("theme") === "light" ? "light" : "dark";
-    document.documentElement.dataset.theme = theme;
+    var savedTheme = localStorage.getItem("theme");
+
+    if (savedTheme === "light") {
+      document.documentElement.dataset.theme = "light";
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
   } catch {
-    document.documentElement.dataset.theme = "dark";
+    document.documentElement.removeAttribute("data-theme");
   }
+})();
 `;
 
 export const metadata: Metadata = {
@@ -24,9 +31,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html
       lang="en"
@@ -36,6 +43,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
+
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>

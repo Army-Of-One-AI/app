@@ -196,6 +196,7 @@ export class TasksService {
   async getTasksByProjectSlug(projectSlug: string, workspaceSlug: string) {
     const tasks = await this.prisma.task.findMany({
       where: {
+        parent_task_id: null,
         project: {
           slug: projectSlug,
           workspace: {
@@ -297,10 +298,93 @@ export class TasksService {
         position: true,
         status: true,
         started_at: true,
+        parent_task: {
+          select: {
+            id: true,
+            title: true,
+            completed_at: true,
+            created_at: true,
+            description: true,
+            due_date: true,
+            estimate: true,
+            priority: true,
+            position: true,
+            status: true,
+            started_at: true,
+            assignee: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                userInfo: {
+                  select: {
+                    avatar_url: true,
+                    full_name: true,
+                  },
+                },
+              },
+            },
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                userInfo: {
+                  select: {
+                    avatar_url: true,
+                    full_name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        sub_tasks: {
+          select: {
+            id: true,
+            title: true,
+            completed_at: true,
+            created_at: true,
+            description: true,
+            due_date: true,
+            estimate: true,
+            priority: true,
+            position: true,
+            status: true,
+            started_at: true,
+            assignee: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                userInfo: {
+                  select: {
+                    avatar_url: true,
+                    full_name: true,
+                  },
+                },
+              },
+            },
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                userInfo: {
+                  select: {
+                    avatar_url: true,
+                    full_name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         assignee: {
           select: {
             id: true,
             email: true,
+            username: true,
             userInfo: {
               select: {
                 avatar_url: true,
@@ -313,6 +397,7 @@ export class TasksService {
           select: {
             id: true,
             email: true,
+            username: true,
             userInfo: {
               select: {
                 avatar_url: true,
@@ -341,10 +426,46 @@ export class TasksService {
       status: t.status,
       startedAt: t.started_at,
 
+      parentTask: t.parent_task,
+
+      subtasks: t.sub_tasks.map((st) => ({
+        id: st.id,
+        title: st.title,
+        description: st.description,
+        completedAt: st.completed_at,
+        createdAt: st.created_at,
+        dueDate: st.due_date,
+        estimate: st.estimate,
+        priority: st.priority,
+        position: st.position,
+        status: st.status,
+        startedAt: st.started_at,
+        assignee: st.assignee
+          ? {
+              id: st.assignee.id,
+              email: st.assignee.email,
+              username: st.assignee.username,
+              fullName: st.assignee.userInfo?.full_name ?? null,
+              avatarURL: st.assignee.userInfo?.avatar_url ?? null,
+            }
+          : null,
+
+        creator: st.creator
+          ? {
+              id: st.creator.id,
+              email: st.creator.email,
+              username: st.creator.username,
+              fullName: st.creator.userInfo?.full_name ?? null,
+              avatarURL: st.creator.userInfo?.avatar_url ?? null,
+            }
+          : null,
+      })),
+
       assignee: t.assignee
         ? {
             id: t.assignee.id,
             email: t.assignee.email,
+            username: t.assignee.username,
             fullName: t.assignee.userInfo?.full_name ?? null,
             avatarURL: t.assignee.userInfo?.avatar_url ?? null,
           }
@@ -354,6 +475,7 @@ export class TasksService {
         ? {
             id: t.creator.id,
             email: t.creator.email,
+            username: t.creator.username,
             fullName: t.creator.userInfo?.full_name ?? null,
             avatarURL: t.creator.userInfo?.avatar_url ?? null,
           }

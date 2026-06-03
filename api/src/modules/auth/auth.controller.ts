@@ -67,6 +67,7 @@ export class AuthController {
       username: user.username,
       createdAt: user.created_at,
       email: user.email,
+      lastUsedWorkspaceId: user.last_used_workspace_id,
       ...userInfo,
       workspaces,
     };

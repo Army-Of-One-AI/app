@@ -35,6 +35,7 @@ export type CreateTaskFormValues = {
   status: TaskStatus;
   dueDate?: string;
   estimate?: number;
+  parentTaskId?: string;
 };
 
 export default function CreateTaskModal({

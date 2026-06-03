@@ -72,9 +72,10 @@ model Workspace {
   slug     String  @unique
   logo_url String?
 
-  teams    Team[]
-  projects Project[]
-  members  WorkspaceMember[]
+  teams         Team[]
+  projects      Project[]
+  members       WorkspaceMember[]
+  lastUsedUsers User[]
 
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
@@ -113,6 +114,9 @@ model User {
   created_tasks     Task[]          @relation(name: "TaskCreator")
   assigned_tasks    Task[]          @relation(name: "TaskAssignee")
   created_documents Document[]      @relation(name: "DocumentCreator")
+
+  lastUsedWorkspace      Workspace? @relation(fields: [last_used_workspace_id], references: [id], onDelete: SetNull)
+  last_used_workspace_id String?
 
   created_at       DateTime          @default(now())
   updated_at       DateTime?         @updatedAt
