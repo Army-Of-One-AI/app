@@ -442,15 +442,6 @@ function TaskCard({
         </button>
       </div>
 
-      {task.description && (
-        <div
-          className="rich-text max-h-[200px] overflow-y-auto"
-          dangerouslySetInnerHTML={{
-            __html: task.description?.html ?? "",
-          }}
-        />
-      )}
-
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
           {task.dueDate && (
