@@ -63,7 +63,7 @@ export default function ProjectBoardPage() {
   } = useTasksByProjectSlug(projectSlug, workspaceSlug);
 
   const createTaskMutation = useCreateTask(workspaceSlug, projectSlug);
-  const { mutate: updateTask, isPending: isUpdatingTask } = useUpdateTask()
+  const { mutate: updateTask, isPending: isUpdatingTask } = useUpdateTask();
 
   const [mounted, setMounted] = useState(false);
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
@@ -159,9 +159,9 @@ export default function ProjectBoardPage() {
       current.map((task) =>
         task.id === taskId
           ? {
-            ...task,
-            status: nextStatus,
-          }
+              ...task,
+              status: nextStatus,
+            }
           : task
       )
     );
@@ -211,6 +211,9 @@ export default function ProjectBoardPage() {
 
             closeModal();
           }}
+          onClickSubtask={(subtask) => {
+            handleOpenTaskDetails(subtask);
+          }}
         />
       ),
     });
@@ -248,7 +251,9 @@ export default function ProjectBoardPage() {
 
   if (error) {
     return (
-      <div className={`flex h-full items-center justify-center text-sm ${classNames.danger.text}`}>
+      <div
+        className={`flex h-full items-center justify-center text-sm ${classNames.danger.text}`}
+      >
         Failed to load tasks.
       </div>
     );
@@ -457,9 +462,10 @@ function KanbanColumn({
         border
         p-3
         transition
-        ${isOver
-          ? "border-[var(--primary)] bg-[var(--primary)]/10"
-          : "border-[var(--border)] bg-[var(--secondary)]/60"
+        ${
+          isOver
+            ? "border-[var(--primary)] bg-[var(--primary)]/10"
+            : "border-[var(--border)] bg-[var(--secondary)]/60"
         }
       `}
     >
@@ -558,9 +564,10 @@ function TaskCard({
       style={style}
       className={`
         cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs
-        ${isDragging
-          ? "scale-[1.02] opacity-80 shadow-lg"
-          : "transition-shadow hover:shadow-sm"
+        ${
+          isDragging
+            ? "scale-[1.02] opacity-80 shadow-lg"
+            : "transition-shadow hover:shadow-sm"
         }
       `}
     >
@@ -578,9 +585,10 @@ function TaskCard({
           {...(canUpdateTaskStatus ? attributes : {})}
           className={`
             rounded-md p-1 transition
-            ${canUpdateTaskStatus
-              ? "cursor-grab text-[var(--text-secondary)] hover:bg-[var(--secondary)] active:cursor-grabbing"
-              : "cursor-not-allowed text-[var(--text-secondary)]/50"
+            ${
+              canUpdateTaskStatus
+                ? "cursor-grab text-[var(--text-secondary)] hover:bg-[var(--secondary)] active:cursor-grabbing"
+                : "cursor-not-allowed text-[var(--text-secondary)]/50"
             }
           `}
         >

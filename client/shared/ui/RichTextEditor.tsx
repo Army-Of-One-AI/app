@@ -14,6 +14,7 @@ import {
   Redo,
   Undo,
 } from "lucide-react";
+import { HTMLAttributes } from "react";
 
 type RichTextValue = {
   html: string;
@@ -23,9 +24,11 @@ type RichTextValue = {
 export default function RichTextEditor({
   value,
   onChange,
+  className,
 }: {
   value: RichTextValue;
   onChange: (value: RichTextValue) => void;
+  className?: HTMLAttributes<HTMLDivElement>["className"];
 }) {
   const editor = useEditor({
     extensions: [StarterKit],
@@ -47,7 +50,9 @@ export default function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className={`overflow-hidden rounded-lg border ${classNames.border}`}>
+    <div
+      className={`overflow-hidden rounded-lg border ${classNames.border} ${className}`}
+    >
       <div
         className={`
           flex flex-wrap items-center gap-1 border-b px-2 py-2

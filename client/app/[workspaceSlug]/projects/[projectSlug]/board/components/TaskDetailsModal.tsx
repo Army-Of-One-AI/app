@@ -1,8 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Task } from "@/features/tasks/types";
 import { TaskPriority, TaskStatus } from "@/shared/types/enums";
 import RichTextEditor from "@/shared/ui/RichTextEditor";
@@ -21,6 +23,7 @@ type Props = {
   members: ProjectMember[];
   onClose: () => void;
   onUpdate: (task: Task) => void;
+  onClickSubtask: (subtask: Task) => void;
 };
 
 type TaskDescription = {
@@ -43,8 +46,10 @@ export default function TaskDetailsModal({
   canAssignTask,
   onClose,
   onUpdate,
+  onClickSubtask,
 }: Props) {
   const params = useParams();
+  const queryClient = useQueryClient();
 
   const workspaceSlug = params.workspaceSlug as string;
   const projectSlug = params.projectSlug as string;
@@ -78,6 +83,7 @@ export default function TaskDetailsModal({
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [isCreatingSubtask, setIsCreatingSubtask] = useState(false);
   const [subtaskTitle, setSubtaskTitle] = useState("");
+  const [subtaskAssigneeId, setSubtaskAssigneeId] = useState("");
 
   const disabled = !canUpdateTask || isPending;
   const subtaskDisabled = !canUpdateTask || isPending || isCreatingTask;
@@ -124,6 +130,7 @@ export default function TaskDetailsModal({
     setSubtasks(task.subtasks ?? []);
     setIsCreatingSubtask(false);
     setSubtaskTitle("");
+    setSubtaskAssigneeId("");
 
     setLoadedTaskId(task.id);
   }, [task]);
@@ -154,21 +161,31 @@ export default function TaskDetailsModal({
   const handleCreateSubtask = async () => {
     if (!task || !subtaskTitle.trim()) return;
 
-    const createdSubtask = await createTask({
-      title: subtaskTitle.trim(),
-      description: {
-        html: "<div></div>",
-        plainText: "",
+    const createdSubtask = await createTask(
+      {
+        title: subtaskTitle.trim(),
+        description: {
+          html: "<div></div>",
+          plainText: "",
+        },
+        parentTaskId: task.id,
+        priority: "Medium",
+        status: "Todo",
       },
-      status: TaskStatus.Todo,
-      priority: TaskPriority.Medium,
+      {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({
+            queryKey: ["get-task-by-id", taskId, projectSlug, workspaceSlug],
+          });
 
-      parentTaskId: task.id,
-    });
+          setSubtaskTitle("");
+          setSubtaskAssigneeId("");
+          setIsCreatingSubtask(false);
+        },
+      }
+    );
 
     setSubtasks((curr) => [...curr, createdSubtask]);
-    setSubtaskTitle("");
-    setIsCreatingSubtask(false);
   };
 
   if (isLoading || !task || loadedTaskId !== task.id) {
@@ -242,9 +259,9 @@ export default function TaskDetailsModal({
             </div>
 
             <div className="mt-3 overflow-hidden rounded-lg border border-[var(--border)]">
-              <div className="grid grid-cols-[1fr_90px_110px_120px] bg-[var(--secondary)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
-                <span>Work</span>
-                <span>Priority</span>
+              <div className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px] bg-[var(--secondary)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
+                <span />
+                <span>Subtask</span>
                 <span>Assignee</span>
                 <span>Status</span>
               </div>
@@ -252,30 +269,38 @@ export default function TaskDetailsModal({
               {subtasks.map((subtask) => (
                 <div
                   key={subtask.id}
-                  className="grid grid-cols-[1fr_90px_110px_120px] border-t border-[var(--border)] px-3 py-3 text-sm"
+                  className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px] items-center border-t border-[var(--border)] px-3 py-3 text-sm"
                 >
-                  <span className="min-w-0 truncate text-[var(--text-primary)]">
+                  <input
+                    type="checkbox"
+                    checked={subtask.status === TaskStatus.Done}
+                    readOnly
+                    className="h-4 w-4"
+                  />
+
+                  <span
+                    onClick={() => onClickSubtask(subtask)}
+                    className="min-w-0 cursor-pointer truncate text-[var(--text-primary)] hover:underline"
+                  >
                     {subtask.title}
                   </span>
 
-                  <span className="text-[var(--text-secondary)]">
-                    {subtask.priority}
-                  </span>
-
-                  <span className="min-w-0 truncate text-[var(--text-secondary)]">
+                  <span className="min-w-0 truncate text-xs text-[var(--text-secondary)]">
                     {subtask.assignee?.fullName ||
                       subtask.assignee?.username ||
-                      "—"}
+                      "Unassigned"}
                   </span>
 
-                  <span className="text-[var(--text-secondary)]">
+                  <span className="text-xs text-[var(--text-secondary)]">
                     {subtask.status.split("_").join(" ")}
                   </span>
                 </div>
               ))}
 
               {isCreatingSubtask ? (
-                <div className="grid grid-cols-[1fr_90px_110px_120px] border-t border-[var(--border)] px-3 py-2 text-sm">
+                <div className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px_92px] items-center border-t border-[var(--border)] px-3 py-2 text-sm">
+                  <input type="checkbox" disabled className="h-4 w-4" />
+
                   <input
                     autoFocus
                     disabled={subtaskDisabled}
@@ -285,6 +310,7 @@ export default function TaskDetailsModal({
                       if (e.key === "Escape") {
                         setIsCreatingSubtask(false);
                         setSubtaskTitle("");
+                        setSubtaskAssigneeId("");
                       }
 
                       if (e.key === "Enter") {
@@ -292,27 +318,63 @@ export default function TaskDetailsModal({
                         handleCreateSubtask();
                       }
                     }}
-                    placeholder="What needs to be done?"
-                    className={`w-full ${inlineControlClassName} ${classNames.input.text} ${classNames.input.placeholder}`}
+                    placeholder="Create subtask"
+                    className={`min-w-0 ${inlineControlClassName} ${classNames.input.text} ${classNames.input.placeholder}`}
                   />
 
-                  <span className="text-[var(--text-secondary)]">Medium</span>
-                  <span className="text-[var(--text-secondary)]">—</span>
-                  <span className="text-[var(--text-secondary)]">Todo</span>
+                  <select
+                    disabled={!canAssignTask || subtaskDisabled}
+                    value={subtaskAssigneeId}
+                    onChange={(e) => setSubtaskAssigneeId(e.target.value)}
+                    className="min-w-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="">Unassigned</option>
+
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.fullName || member.username}
+                      </option>
+                    ))}
+                  </select>
+
+                  <span className="text-xs text-[var(--text-secondary)]">
+                    Todo
+                  </span>
+
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      disabled={subtaskDisabled || !subtaskTitle.trim()}
+                      onClick={handleCreateSubtask}
+                      className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isCreatingTask ? "Adding..." : "Add"}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={subtaskDisabled}
+                      onClick={() => {
+                        setIsCreatingSubtask(false);
+                        setSubtaskTitle("");
+                        setSubtaskAssigneeId("");
+                      }}
+                      className="rounded-md px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   disabled={subtaskDisabled}
                   onClick={() => setIsCreatingSubtask(true)}
-                  className="grid w-full grid-cols-[1fr_90px_110px_120px] border-t border-[var(--border)] px-3 py-3 text-left text-sm hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex w-full items-center gap-3 border-t border-[var(--border)] px-3 py-3 text-left text-sm hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <span className="text-[var(--primary)]">
                     + Create subtask
                   </span>
-                  <span className="text-[var(--text-secondary)]">Medium</span>
-                  <span className="text-[var(--text-secondary)]">—</span>
-                  <span className="text-[var(--text-secondary)]">Todo</span>
                 </button>
               )}
             </div>

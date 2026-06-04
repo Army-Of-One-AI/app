@@ -31,12 +31,16 @@ import {
   TASK_UPDATE_ROLES,
 } from '../permissions/permissions.service';
 import { UpdateTaskDto } from '../tasks/dto/update-task.dto';
+import { DocumentsService } from '../documents/documents.service';
+import findProjectDocumentsDto from '../documents/dto/find-project-documents.dto';
+import CreateDocumentDto from '../documents/dto/create-document.dto';
 @Controller('workspaces')
 export class WorkspacesController {
   constructor(
     private readonly workspacesService: WorkspacesService,
     private readonly projectsService: ProjectsService,
     private readonly tasksService: TasksService,
+    private readonly documentsService: DocumentsService,
   ) {}
 
   @UseGuards(JWTAuthGuard)
@@ -188,5 +192,29 @@ export class WorkspacesController {
     @Param('projectSlug') pjSlug: string,
   ) {
     return await this.projectsService.getProjectMembers(pjSlug, wsSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/documents')
+  async findProjectDocuments(
+    @Param('workspaceSlug') wsSlug: string,
+    @Param('projectSlug') pjSlug: string,
+    @Query() query: findProjectDocumentsDto,
+  ) {
+    return await this.documentsService.findProjectDocuments(
+      pjSlug,
+      wsSlug,
+      query,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/documents')
+  async createProjectDocuments(
+    @CurrentUser() user: { id: string },
+    @Param('projectSlug') pjSlug: string,
+    @Body() payload: CreateDocumentDto,
+  ) {
+    return await this.documentsService.create(user.id, pjSlug, payload);
   }
 }

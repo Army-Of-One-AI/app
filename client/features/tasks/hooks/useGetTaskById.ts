@@ -4,7 +4,7 @@ import { getTaskById } from "../api/getTaskById";
 export default function useGetTaskById(
   taskId: string,
   projectSlug: string,
-  workspaceSlug: string,
+  workspaceSlug: string
 ) {
   return useQuery({
     queryKey: ["get-task-by-id", taskId, projectSlug, workspaceSlug],

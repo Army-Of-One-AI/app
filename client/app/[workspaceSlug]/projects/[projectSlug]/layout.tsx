@@ -54,7 +54,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </>
           ) : (
             <>
-              <Link href={"/"} className="font-medium hover:underline">
+              <Link
+                href={`/${workspaceSlug}/projects`}
+                className="font-medium hover:underline"
+              >
                 Projects
               </Link>
 
@@ -76,7 +79,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <nav className="flex items-center gap-1 border-b border-[var(--border)]">
+        <nav className="flex items-center gap-1 border-b border-[var(--border)] px-4 py-2">
           {projectNavItems.map((item) => {
             const href = `${projectBaseUrl}${item.href}`;
 

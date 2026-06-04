@@ -23,11 +23,11 @@ export default function HomePage() {
         );
 
         if (workspace) {
-          router.push(`/${workspace.slug}`);
+          router.push(`/${workspace.slug}/projects`);
           return;
         }
 
-        router.push(`/${userInfo!.workspaces[0].slug}`);
+        router.push(`/${userInfo!.workspaces[0].slug}/projects`);
       }
     } else {
       router.push(`/onboarding`);
