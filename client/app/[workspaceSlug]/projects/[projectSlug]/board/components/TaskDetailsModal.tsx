@@ -3,10 +3,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Task } from "@/features/tasks/types";
-import { TaskPriority, TaskStatus } from "@/shared/types/enums";
+import { TActivity, Task } from "@/features/tasks/types";
+import { TaskActivity, TaskPriority, TaskStatus } from "@/shared/types/enums";
 import RichTextEditor from "@/shared/ui/RichTextEditor";
 import Button from "@/shared/ui/Button";
 import useGetTaskById from "@/features/tasks/hooks/useGetTaskById";
@@ -21,6 +21,7 @@ import { ChevronDown, Ellipsis, X } from "lucide-react";
 import useDeleteTask from "@/features/tasks/hooks/useDeleteTask";
 import TaskVerifyModal from "./TaskVerifyModal";
 import useArchiveTask from "@/features/tasks/hooks/useArchiveTask";
+import Link from "next/link";
 
 type Props = {
   taskId: string;
@@ -35,6 +36,10 @@ type Props = {
 type TaskDescription = {
   html: string;
   plainText: string;
+};
+
+type TaskWithActivities = Task & {
+  activities?: TActivity[];
 };
 
 const emptyDescription: TaskDescription = {
@@ -54,7 +59,6 @@ export default function TaskDetailsModal({
   onUpdate,
   onClickSubtask,
 }: Props) {
-  const router = useRouter();
   const params = useParams();
   const queryClient = useQueryClient();
 
@@ -67,13 +71,17 @@ export default function TaskDetailsModal({
     isError,
   } = useGetTaskById(taskId, projectSlug, workspaceSlug);
 
+  const typedTask = task as TaskWithActivities | undefined;
+
   const { mutateAsync: updateTask, isPending } = useUpdateTask();
   const { mutateAsync: createTask, isPending: isCreatingTask } = useCreateTask(
     workspaceSlug,
     projectSlug
   );
-  const { mutateAsync: deleteTask, isPending: isDeletingTask } = useDeleteTask();
-  const { mutateAsync: archiveTask, isPending: isArchivingTask } = useArchiveTask();
+  const { mutateAsync: deleteTask, isPending: isDeletingTask } =
+    useDeleteTask();
+  const { mutateAsync: archiveTask, isPending: isArchivingTask } =
+    useArchiveTask();
 
   const [loadedTaskId, setLoadedTaskId] = useState<string | null>(null);
 
@@ -99,8 +107,8 @@ export default function TaskDetailsModal({
   const disabled = !canUpdateTask || isPending;
   const subtaskDisabled = !canUpdateTask || isPending || isCreatingTask;
 
-  const [isOpenDeleteTaskModal, setOpenDeleteTaskModal] = useState(false)
-  const [isOpenArchiveTaskModal, setOpenArchiveTaskModal] = useState(false)
+  const [isOpenDeleteTaskModal, setOpenDeleteTaskModal] = useState(false);
+  const [isOpenArchiveTaskModal, setOpenArchiveTaskModal] = useState(false);
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
 
@@ -131,30 +139,30 @@ export default function TaskDetailsModal({
   }, [subtasks]);
 
   useEffect(() => {
-    if (!task) return;
+    if (!typedTask) return;
 
-    setTitle(task.title);
-    setDescription(parseRichText(task.description));
-    setStatus(task.status);
-    setPriority(task.priority);
-    setDueDate(task.dueDate ? task.dueDate.slice(0, 10) : "");
-    setEstimate(task.estimate?.toString() ?? "");
-    setAssigneeId(task.assignee?.id ?? "");
+    setTitle(typedTask.title);
+    setDescription(parseRichText(typedTask.description));
+    setStatus(typedTask.status);
+    setPriority(typedTask.priority);
+    setDueDate(typedTask.dueDate ? typedTask.dueDate.slice(0, 10) : "");
+    setEstimate(typedTask.estimate?.toString() ?? "");
+    setAssigneeId(typedTask.assignee?.id ?? "");
     setIsAssigneeOpen(false);
     setAssigneeSearch("");
 
-    setSubtasks(task.subtasks ?? []);
+    setSubtasks(typedTask.subtasks ?? []);
     setIsCreatingSubtask(false);
     setSubtaskTitle("");
     setSubtaskAssigneeId("");
 
-    setLoadedTaskId(task.id);
-  }, [task]);
+    setLoadedTaskId(typedTask.id);
+  }, [typedTask]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!task || !title.trim()) return;
+    if (!typedTask || !title.trim()) return;
 
     const updatedTask = await updateTask({
       workspaceSlug,
@@ -175,7 +183,7 @@ export default function TaskDetailsModal({
   };
 
   const handleCreateSubtask = async () => {
-    if (!task || !subtaskTitle.trim()) return;
+    if (!typedTask || !subtaskTitle.trim()) return;
 
     const createdSubtask = await createTask(
       {
@@ -184,9 +192,10 @@ export default function TaskDetailsModal({
           html: "<div></div>",
           plainText: "",
         },
-        parentTaskId: task.id,
+        parentTaskId: typedTask.id,
         priority: "Medium",
         status: "Todo",
+        // assigneeId: subtaskAssigneeId || null,
       },
       {
         onSuccess: async () => {
@@ -204,7 +213,7 @@ export default function TaskDetailsModal({
     setSubtasks((curr) => [...curr, createdSubtask]);
   };
 
-  if (isLoading || !task || loadedTaskId !== task.id) {
+  if (isLoading || !typedTask || loadedTaskId !== typedTask.id) {
     return (
       <div
         className={`flex h-[82vh] w-[92vw] max-w-305 items-center justify-center text-sm ${classNames.text.secondary}`}
@@ -229,8 +238,8 @@ export default function TaskDetailsModal({
   }
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="w-full px-4 flex justify-end items-center">
+    <div className="flex w-full flex-col">
+      <div className="flex w-full items-center justify-end px-4">
         <Popover
           position="right"
           onClose={() => setOpenPopover(false)}
@@ -248,30 +257,35 @@ export default function TaskDetailsModal({
             />
           }
         >
-          <div className="flex justify-end items-center">
+          <div className="flex items-center justify-end">
             <button
-              className={`cursor-pointer w-8 h-8 overflow-hidden relative hover:bg-(--border)
-                        rounded-sm flex ${isOpenPopover && `border border-(--btn-primary-bg)`}
-                        items-center justify-center`}
+              className={`relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-(--border) ${
+                isOpenPopover && `border border-(--btn-primary-bg)`
+              }`}
               type="button"
               onClick={() => setOpenPopover((curr) => !curr)}
             >
-              <div className={`${isOpenPopover && `bg-(--btn-primary-bg) opacity-20`} w-full h-full absolute`} />
-              <Ellipsis className={`${isOpenPopover && `text-[${classNames.primaryColor}]`} transition-colors relative`} size={20} />
+              <div
+                className={`${
+                  isOpenPopover && `bg-(--btn-primary-bg) opacity-20`
+                } absolute h-full w-full`}
+              />
+
+              <Ellipsis className="relative transition-colors" size={20} />
             </button>
+
             <button
-            onClick={() => onClose()}
-              className={`cursor-pointer w-8 h-8 overflow-hidden relative
-                        rounded-sm flex hover:bg-(--border)
-                        items-center justify-center`}
+              onClick={onClose}
+              className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-(--border)"
               type="button"
             >
-              <div className={`w-full h-full absolute`} />
-              <X className={`transition-colors relative`} size={20} />
+              <div className="absolute h-full w-full" />
+              <X className="relative transition-colors" size={20} />
             </button>
           </div>
         </Popover>
       </div>
+
       <form
         onSubmit={handleSubmit}
         className="flex h-[82vh] w-[92vw] max-w-305 flex-col overflow-hidden"
@@ -291,7 +305,7 @@ export default function TaskDetailsModal({
               </h3>
 
               <RichTextEditor
-                key={task.id}
+                key={typedTask.id}
                 value={description}
                 onChange={setDescription}
               />
@@ -381,24 +395,8 @@ export default function TaskDetailsModal({
                       className={`min-w-0 ${inlineControlClassName} ${classNames.input.text} ${classNames.input.placeholder}`}
                     />
 
-                    <select
-                      disabled={!canAssignTask || subtaskDisabled}
-                      value={subtaskAssigneeId}
-                      onChange={(e) => setSubtaskAssigneeId(e.target.value)}
-                      className="min-w-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <option value="">Unassigned</option>
-
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.fullName || member.username}
-                        </option>
-                      ))}
-                    </select>
-
-                    <span className="text-xs text-[var(--text-secondary)]">
-                      Todo
-                    </span>
+                    <span />
+                    <span />
 
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -444,11 +442,25 @@ export default function TaskDetailsModal({
                 Activity
               </h3>
 
-              <div className="rounded-lg border border-[var(--border)] p-4">
-                <input
-                  placeholder="Add a comment..."
-                  className={`w-full text-sm ${classNames.input.text} ${classNames.input.placeholder} ${inlineControlClassName}`}
-                />
+              <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+                <div className="border-b border-[var(--border)] p-4">
+                  <input
+                    placeholder="Add a comment..."
+                    className={`w-full text-sm ${classNames.input.text} ${classNames.input.placeholder} ${inlineControlClassName}`}
+                  />
+                </div>
+
+                <div className="max-h-80 overflow-y-auto">
+                  {typedTask.activities?.length ? (
+                    typedTask.activities.map((activity) => (
+                      <ActivityItem key={activity.id} activity={activity} />
+                    ))
+                  ) : (
+                    <div className="px-4 py-6 text-sm text-[var(--text-secondary)]">
+                      No activity yet.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -463,30 +475,23 @@ export default function TaskDetailsModal({
                 type="button"
                 disabled={disabled}
                 onClick={() => setIsStatusOpen((curr) => !curr)}
-                className={`
-                inline-flex h-10 items-center gap-2 rounded-md
-                bg-blue-600 px-4 text-sm font-bold text-white
-                shadow-sm transition hover:bg-blue-500 cursor-pointer
-                disabled:cursor-not-allowed disabled:opacity-60`}
+                className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md px-4 text-sm font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {Object.entries(taskStatusConfig).find(([key,]) => key === status)?.[1].label ?? status}
+                {Object.entries(taskStatusConfig).find(
+                  ([key]) => key === status
+                )?.[1].label ?? status}
 
                 <span
-                  className={`transition-transform gb ${isStatusOpen ? "rotate-180" : ""
-                    }`}
+                  className={`transition-transform ${
+                    isStatusOpen ? "rotate-180" : ""
+                  }`}
                 >
                   <ChevronDown size={20} />
                 </span>
               </button>
 
               {isStatusOpen && (
-                <div
-                  className="
-                  absolute left-0 top-full z-50 mt-3 w-80 overflow-hidden
-                  rounded-lg border border-zinc-700 bg-zinc-900
-                  shadow-2xl shadow-black/40
-                "
-                >
+                <div className="absolute left-0 top-full z-50 mt-3 w-80 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl shadow-black/40">
                   <div className="py-3">
                     {Object.entries(taskStatusConfig).map(([key, value]) => {
                       const isSelected = key === status;
@@ -499,48 +504,24 @@ export default function TaskDetailsModal({
                             setStatus(key as TaskStatus);
                             setIsStatusOpen(false);
                           }}
-                          className={`
-                          flex w-full items-center px-6 py-2.5 text-left
-                          transition hover:bg-zinc-800
-                          ${isSelected ? "border-l-2 border-blue-500 bg-zinc-800" : ""}
-                        `}
+                          className={`flex w-full items-center px-6 py-2.5 text-left transition hover:bg-zinc-800 ${
+                            isSelected
+                              ? "border-l-2 border-blue-500 bg-zinc-800"
+                              : ""
+                          }`}
                         >
                           <span
                             style={{
-                              background: `${value.bg}`,
-                              color: `${value.text}`,
+                              background: value.bg,
+                              color: value.text,
                             }}
-                            className={`
-                            rounded-md px-2 py-0.5 text-xs font-black uppercase
-                            tracking-wide`}>
+                            className="rounded-md px-2 py-0.5 text-xs font-black uppercase tracking-wide"
+                          >
                             {value.label}
                           </span>
                         </button>
                       );
                     })}
-                  </div>
-
-                  <div className="border-t border-zinc-700 py-3">
-                    <button
-                      type="button"
-                      className="block w-full px-6 py-3 text-left text-sm font-bold text-zinc-300 hover:bg-zinc-800"
-                    >
-                      Create status
-                    </button>
-
-                    <button
-                      type="button"
-                      className="block w-full px-6 py-3 text-left text-sm font-bold text-zinc-300 hover:bg-zinc-800"
-                    >
-                      Edit status
-                    </button>
-
-                    <button
-                      type="button"
-                      className="block w-full px-6 py-3 text-left text-sm font-bold text-zinc-300 hover:bg-zinc-800"
-                    >
-                      View workflow
-                    </button>
                   </div>
                 </div>
               )}
@@ -684,7 +665,16 @@ export default function TaskDetailsModal({
                 </DetailRow>
 
                 <DetailRow label="Parent">
-                  {task.parentTask?.title ?? "None"}
+                  {typedTask.parentTask ? (
+                    <Link
+                      className="text-(--steel-blue) hover:underline brightness-105"
+                      href={`/${workspaceSlug}/projects/${projectSlug}/board?selectedTask=${typedTask.parentTask.id}`}
+                    >
+                      {typedTask.parentTask.title}
+                    </Link>
+                  ) : (
+                    "None"
+                  )}
                 </DetailRow>
 
                 <DetailRow label="Due date">
@@ -712,7 +702,7 @@ export default function TaskDetailsModal({
                 </DetailRow>
 
                 <DetailRow label="Reporter">
-                  {task.creator?.fullName ?? "Unknown"}
+                  {typedTask.creator?.fullName ?? "Unknown"}
                 </DetailRow>
               </div>
             </div>
@@ -727,51 +717,159 @@ export default function TaskDetailsModal({
           </aside>
         </div>
       </form>
+
       <TaskVerifyModal
         mode="delete"
-        taskTitle={task.title}
+        taskTitle={typedTask.title}
         isOpen={isOpenDeleteTaskModal}
         onClose={() => setOpenDeleteTaskModal(false)}
         isLoading={isDeletingTask}
         onConfirm={async () => {
-          await deleteTask({
-            taskId,
-            projectSlug,
-            workspaceSlug
-          }, {
-            onSuccess: async () => {
-              await queryClient.invalidateQueries({
-                queryKey: ["get-tasks-by-project-slug", projectSlug, workspaceSlug],
-              });
-              setOpenDeleteTaskModal(false);
-              onClose();
+          await deleteTask(
+            {
+              taskId,
+              projectSlug,
+              workspaceSlug,
+            },
+            {
+              onSuccess: async () => {
+                await queryClient.invalidateQueries({
+                  queryKey: [
+                    "get-tasks-by-project-slug",
+                    projectSlug,
+                    workspaceSlug,
+                  ],
+                });
+                setOpenDeleteTaskModal(false);
+                onClose();
+              },
             }
-          })
-        }} />
+          );
+        }}
+      />
 
       <TaskVerifyModal
         mode="archive"
-        taskTitle={task.title}
+        taskTitle={typedTask.title}
         isOpen={isOpenArchiveTaskModal}
         onClose={() => setOpenArchiveTaskModal(false)}
         isLoading={isArchivingTask}
         onConfirm={async () => {
-          await archiveTask({
-            taskId,
-            projectSlug,
-            workspaceSlug
-          }, {
-            onSuccess: async () => {
-              await queryClient.invalidateQueries({
-                queryKey: ["get-tasks-by-project-slug", projectSlug, workspaceSlug],
-              });
-              setOpenArchiveTaskModal(false);
-              onClose();
+          await archiveTask(
+            {
+              taskId,
+              projectSlug,
+              workspaceSlug,
+            },
+            {
+              onSuccess: async () => {
+                await queryClient.invalidateQueries({
+                  queryKey: [
+                    "get-tasks-by-project-slug",
+                    projectSlug,
+                    workspaceSlug,
+                  ],
+                });
+                setOpenArchiveTaskModal(false);
+                onClose();
+              },
             }
-          })
-        }} />
+          );
+        }}
+      />
     </div>
   );
+}
+
+function ActivityItem({ activity }: { activity: TActivity }) {
+  return (
+    <div className="flex gap-3 border-b border-[var(--border)] px-4 py-3 last:border-b-0">
+      {activity.actor.avatar ? (
+        <img
+          src={activity.actor.avatar}
+          alt={activity.actor.fullName}
+          className="h-8 w-8 rounded-full object-cover"
+        />
+      ) : (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-semibold text-[var(--text-secondary)]">
+          {getInitial(activity.actor.fullName || "U")}
+        </div>
+      )}
+
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-[var(--text-primary)]">
+          <span className="font-semibold">
+            {activity.actor.fullName || "Unknown user"}
+          </span>{" "}
+          {renderActivityText(activity)}
+        </p>
+
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          {formatActivityTime(activity.createdAt)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function renderActivityText(activity: TActivity) {
+  const before = activity.metadata?.before;
+  const after = activity.metadata?.after;
+
+  switch (activity.activity) {
+    case TaskActivity.TITLE_CHANGED:
+      return `changed title from "${before ?? ""}" to "${after ?? ""}"`;
+
+    case TaskActivity.DESCRIPTION_UPDATED:
+      return "updated the description";
+
+    case TaskActivity.STATUS_CHANGED:
+      return `changed status from ${formatEmptyValue(
+        before
+      )} to ${formatEmptyValue(after)}`;
+
+    case TaskActivity.PRIORITY_CHANGED:
+      return `changed priority from ${formatEmptyValue(
+        before
+      )} to ${formatEmptyValue(after)}`;
+
+    case TaskActivity.DUE_DATE_CHANGED:
+      return `changed due date from ${formatActivityDate(
+        before
+      )} to ${formatActivityDate(after)}`;
+
+    case TaskActivity.ASSIGNEE_CHANGED:
+      return `changed assignee from ${formatEmptyValue(
+        before,
+        "Unassigned"
+      )} to ${formatEmptyValue(after, "Unassigned")}`;
+
+    default:
+      return activity.activity.toLowerCase().replaceAll("_", " ");
+  }
+}
+
+function formatEmptyValue(value: unknown, fallback = "None") {
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
+}
+
+function formatActivityDate(value: unknown) {
+  if (!value) return "None";
+
+  const date = new Date(String(value));
+
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString();
+}
+
+function formatActivityTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleString();
 }
 
 function DetailRow({

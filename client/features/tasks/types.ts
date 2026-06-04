@@ -1,4 +1,4 @@
-import { TaskPriority, TaskStatus } from "@/shared/types/enums";
+import { TaskActivity, TaskPriority, TaskStatus } from "@/shared/types/enums";
 
 export type TaskUser = {
   id: string;
@@ -36,4 +36,23 @@ export type Task = {
   subtasks: Task[];
 
   parentTask: Task | null;
+};
+
+export type TActivity = {
+  id: string;
+  createdAt: string;
+  activity: TaskActivity;
+  metadata: {
+    after: string;
+    before: string;
+  };
+  actor: {
+    fullName: string;
+    id: string;
+    avatar: string;
+  };
+};
+
+export type TaskDetails = Task & {
+  activities: TActivity[];
 };

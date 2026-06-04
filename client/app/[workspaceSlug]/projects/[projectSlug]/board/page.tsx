@@ -24,7 +24,7 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import CreateTaskModal from "./components/CreateTaskModal";
 import useModal from "@/shared/hooks/useModal";
@@ -47,14 +47,17 @@ type BoardStatus = (typeof columns)[number]["key"];
 type BoardColumn = (typeof columns)[number];
 
 export default function ProjectBoardPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const selectedTask = searchParams.get("selectedTask");
 
   const workspaceSlug = params.workspaceSlug as string;
   const projectSlug = params.projectSlug as string;
 
   const { data: members } = useGetProjectMembers(projectSlug, workspaceSlug);
-  const { openModal, closeModal } = useModal();
+  const { openModal, closeModal, isOpen: isOpenModal } = useModal();
 
   const {
     data: apiTasks,
@@ -187,38 +190,10 @@ export default function ProjectBoardPage() {
     );
   };
 
-  const handleOpenTaskDetails = (task: Task) => {
-    openModal({
-      title: "Task details",
-      showHeader: false,
-      modalContent: (
-        <TaskDetailsModal
-          members={members ?? []}
-          taskId={task.id}
-          canUpdateTask={
-            apiTasks?.currentUser.permissions.task.canUpdateTask ?? false
-          }
-          canAssignTask={
-            apiTasks?.currentUser.permissions.task.canAssignTask ?? false
-          }
-          onClose={closeModal}
-          onUpdate={() => {
-            queryClient.invalidateQueries({
-              queryKey: [
-                "get-tasks-by-project-slug",
-                projectSlug,
-                workspaceSlug,
-              ],
-            });
-
-            closeModal();
-          }}
-          onClickSubtask={(subtask) => {
-            handleOpenTaskDetails(subtask);
-          }}
-        />
-      ),
-    });
+  const handleOpenTaskDetails = (taskId: string) => {
+    router.push(
+      `/${workspaceSlug}/projects/${projectSlug}/board?selectedTask=${taskId}`
+    );
   };
 
   const handleOpenCreateTaskModal = (status: BoardStatus = TaskStatus.Todo) => {
@@ -242,6 +217,50 @@ export default function ProjectBoardPage() {
       ),
     });
   };
+
+  useEffect(() => {
+    if (selectedTask) {
+      openModal({
+        title: "Task details",
+        showHeader: false,
+        modalContent: (
+          <TaskDetailsModal
+            members={members ?? []}
+            taskId={selectedTask}
+            canUpdateTask={
+              apiTasks?.currentUser.permissions.task.canUpdateTask ?? false
+            }
+            canAssignTask={
+              apiTasks?.currentUser.permissions.task.canAssignTask ?? false
+            }
+            onClose={() => {
+              router.push(`/${workspaceSlug}/projects/${projectSlug}/board`);
+              closeModal();
+            }}
+            onUpdate={() => {
+              queryClient.invalidateQueries({
+                queryKey: [
+                  "get-tasks-by-project-slug",
+                  projectSlug,
+                  workspaceSlug,
+                ],
+              });
+              closeModal();
+            }}
+            onClickSubtask={(subtask) => {
+              handleOpenTaskDetails(subtask.id);
+            }}
+          />
+        ),
+      });
+    }
+  }, [selectedTask]);
+
+  useEffect(() => {
+    if (!isOpenModal) {
+      router.push(`/${workspaceSlug}/projects/${projectSlug}/board`);
+    }
+  }, [isOpenModal]);
 
   if (isLoading) {
     return (
@@ -407,7 +426,7 @@ function BoardColumns({
   onCreateTask: (status: BoardStatus) => void;
   canCreateTask: boolean;
   canUpdateTaskStatus: boolean;
-  onOpenTaskDetails: (task: Task) => void;
+  onOpenTaskDetails: (taskID: string) => void;
 }) {
   return (
     <div className="flex flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4">
@@ -445,7 +464,7 @@ function KanbanColumn({
   disabled?: boolean;
   onCreateTask: (status: BoardStatus) => void;
   canUpdateTaskStatus: boolean;
-  onOpenTaskDetails: (task: Task) => void;
+  onOpenTaskDetails: (taskId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -520,7 +539,7 @@ function TaskCard({
   task: Task;
   disabled?: boolean;
   canUpdateTaskStatus: boolean;
-  onOpenTaskDetails: (task: Task) => void;
+  onOpenTaskDetails: (taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -554,7 +573,7 @@ function TaskCard({
 
   return (
     <article
-      onClick={() => onOpenTaskDetails(task)}
+      onClick={() => onOpenTaskDetails(task.id)}
       onPointerDown={(e) => {
         e.stopPropagation();
 

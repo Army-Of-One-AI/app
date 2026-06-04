@@ -36,15 +36,19 @@ export default function TaskVerifyModal({
       ? `This task and ${subtaskCount} subtasks will be moved to deleted items.`
       : "This task will be moved to deleted items."
     : subtaskCount > 0
-      ? `This task and ${subtaskCount} subtasks will be removed from active project views and moved to the archive.`
-      : "This task will be removed from active project views and moved to the archive.";
+    ? `This task and ${subtaskCount} subtasks will be removed from active project views and moved to the archive.`
+    : "This task will be removed from active project views and moved to the archive.";
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[var(--overlay)] px-4">
       <div
         className={`
           w-full max-w-[440px] overflow-hidden rounded-2xl border bg-[var(--surface)] shadow-[var(--shadow-soft)]
-          ${isDelete ? "border-[var(--danger-border)]" : "border-[var(--border)]"}
+          ${
+            isDelete
+              ? "border-[var(--danger-border)]"
+              : "border-[var(--border)]"
+          }
         `}
       >
         <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] p-5">

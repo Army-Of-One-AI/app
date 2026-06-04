@@ -15,9 +15,11 @@ type OpenModalOption = {
 export const ModalContext = createContext<{
   openModal: (opt: OpenModalOption) => void;
   closeModal: () => void;
+  isOpen: boolean;
 }>({
   openModal: () => {},
   closeModal: () => {},
+  isOpen: false,
 });
 
 export default function ModalProvider({
@@ -29,6 +31,7 @@ export default function ModalProvider({
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [header, setHeader] = useState<React.ReactNode>(null);
   const [showHeader, setShowHeader] = useState(true);
+  const isOpen = modalContent !== null;
 
   const value = useMemo(
     () => ({
@@ -39,8 +42,9 @@ export default function ModalProvider({
         setShowHeader(opt.showHeader ?? true);
       },
       closeModal: () => setModalContent(null),
+      isOpen,
     }),
-    []
+    [isOpen]
   );
 
   return (

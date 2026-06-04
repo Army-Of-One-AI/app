@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import PrismaService from 'src/shared/services/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { TaskPriority, TaskStatus } from 'generated/prisma/enums';
+import { TaskActivity, TaskPriority, TaskStatus } from 'generated/prisma/enums';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { Prisma } from 'generated/prisma/browser';
 
 @Injectable()
 export class TasksService {
@@ -45,40 +46,74 @@ export class TasksService {
       },
     });
 
-    const task = await this.prisma.task.create({
-      data: {
-        title: dto.title,
-        description: dto.description ?? undefined,
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          id: userId,
+        },
+        select: {
+          userInfo: {
+            select: {
+              full_name: true,
+              avatar_url: true,
+            },
+          },
+        },
+      });
 
-        status: dto.status ?? TaskStatus.Backlog,
-        priority: dto.priority ?? TaskPriority.Medium,
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
 
-        estimate: dto.estimate ?? undefined,
-        due_date: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      const task = await tx.task.create({
+        data: {
+          title: dto.title,
+          description: dto.description ?? undefined,
 
-        position: latestTask ? latestTask.position.plus(1) : 0,
+          status: dto.status ?? TaskStatus.Backlog,
+          priority: dto.priority ?? TaskPriority.Medium,
 
-        project_id: project.id,
-        creator_id: userId,
+          estimate: dto.estimate ?? undefined,
+          due_date: dto.dueDate ? new Date(dto.dueDate) : undefined,
 
-        assignee_id: dto.assigneeId ?? undefined,
-        parent_task_id: dto.parentTaskId ?? undefined,
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        status: true,
-        priority: true,
-        estimate: true,
-        due_date: true,
-        started_at: true,
-        completed_at: true,
-        position: true,
-        created_at: true,
-        updated_at: true,
-      },
+          position: latestTask ? latestTask.position.plus(1) : 0,
+
+          project_id: project.id,
+          creator_id: userId,
+
+          assignee_id: dto.assigneeId ?? undefined,
+          parent_task_id: dto.parentTaskId ?? undefined,
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          status: true,
+          priority: true,
+          estimate: true,
+          due_date: true,
+          started_at: true,
+          completed_at: true,
+          position: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      const activity = await tx.taskActivityLog.create({
+        data: {
+          activity: 'TASK_CREATED',
+          task_id: task.id,
+          user_id: userId,
+          actor_name_snapshot: user.userInfo?.full_name || '',
+          actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+        },
+      });
+
+      return { task, activity };
     });
+
+    const { task } = result;
 
     return {
       id: task.id,
@@ -97,11 +132,30 @@ export class TasksService {
   }
 
   async updateTask(
+    userId: string,
     workspaceSlug: string,
     projectSlug: string,
     taskId: string,
     dto: UpdateTaskDto,
   ) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+      },
+      select: {
+        userInfo: {
+          select: {
+            full_name: true,
+            avatar_url: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
@@ -117,6 +171,13 @@ export class TasksService {
       select: {
         id: true,
         project_id: true,
+        description: true,
+        title: true,
+        status: true,
+        assignee_id: true,
+        priority: true,
+        due_date: true,
+        assignee: true,
       },
     });
 
@@ -124,73 +185,182 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    const updatedTask = await this.prisma.task.update({
-      where: {
-        id: task.id,
-      },
-      data: {
-        ...(dto.title !== undefined && {
-          title: dto.title,
-        }),
+    const activities: Prisma.TaskActivityLogCreateManyInput[] = [];
 
-        ...(dto.description !== undefined && {
-          description: dto.description,
-        }),
+    if (dto.title !== undefined && dto.title !== task.title) {
+      activities.push({
+        task_id: task.id,
+        actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+        actor_name_snapshot: user.userInfo?.full_name || '',
+        user_id: userId,
+        activity: TaskActivity.TITLE_CHANGED,
+        metadata: {
+          before: task.title,
+          after: dto.title,
+        },
+      });
+    }
 
-        ...(dto.status !== undefined && {
-          status: dto.status,
-        }),
+    const currentDescription = task.description as {
+      html: string;
+      plainText: string;
+    } | null;
 
-        ...(dto.priority !== undefined && {
-          priority: dto.priority,
-        }),
+    if (
+      dto.description !== undefined &&
+      dto.description?.plainText !== currentDescription?.plainText
+    ) {
+      activities.push({
+        task_id: task.id,
+        activity: TaskActivity.DESCRIPTION_UPDATED,
+        user_id: userId,
+        actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+        actor_name_snapshot: user.userInfo?.full_name || '',
+        metadata: {
+          before: currentDescription?.plainText ?? '',
+          after: dto.description?.plainText ?? '',
+        },
+      });
+    }
 
-        ...(dto.estimate !== undefined && {
-          estimate: dto.estimate,
-        }),
+    if (dto.status !== undefined && dto.status !== task.status) {
+      activities.push({
+        task_id: task.id,
+        activity: TaskActivity.STATUS_CHANGED,
+        actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+        actor_name_snapshot: user.userInfo?.full_name || '',
+        user_id: userId,
+        metadata: {
+          before: task.status,
+          after: dto.status,
+        },
+      });
+    }
 
-        ...(dto.dueDate !== undefined && {
-          due_date: dto.dueDate ? new Date(dto.dueDate) : null,
-        }),
+    if (dto.assigneeId !== undefined && dto.assigneeId !== task.assignee_id) {
+      if (dto.assigneeId !== null) {
+        const nextAssignee = await this.prisma.user.findUnique({
+          where: {
+            id: dto.assigneeId,
+          },
+        });
 
-        ...(dto.assigneeId !== undefined && {
-          assignee_id: dto.assigneeId || null,
-        }),
+        if (nextAssignee) {
+          activities.push({
+            task_id: task.id,
+            activity: TaskActivity.ASSIGNEE_CHANGED,
+            actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+            actor_name_snapshot: user.userInfo?.full_name || '',
+            user_id: userId,
+            metadata: {
+              before: task.assignee?.username || '',
+              after: nextAssignee.username,
+            },
+          });
+        }
+      } else {
+        activities.push({
+          task_id: task.id,
+          activity: TaskActivity.ASSIGNEE_CHANGED,
+          actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+          actor_name_snapshot: user.userInfo?.full_name || '',
+          user_id: userId,
+          metadata: {
+            before: task.assignee?.username || '',
+            after: '',
+          },
+        });
+      }
+    }
 
-        ...(dto.parentTaskId !== undefined && {
-          parent_task_id: dto.parentTaskId || null,
-        }),
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        status: true,
-        priority: true,
-        estimate: true,
-        due_date: true,
-        started_at: true,
-        completed_at: true,
-        position: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+    if (dto.priority !== undefined && dto.priority !== task.priority) {
+      activities.push({
+        task_id: task.id,
+        activity: TaskActivity.PRIORITY_CHANGED,
+        actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+        actor_name_snapshot: user.userInfo?.full_name || '',
+        user_id: userId,
+        metadata: {
+          before: task.priority,
+          after: dto.priority,
+        },
+      });
+    }
 
-    return {
-      id: updatedTask.id,
-      title: updatedTask.title,
-      description: updatedTask.description,
-      status: updatedTask.status,
-      priority: updatedTask.priority,
-      estimate: updatedTask.estimate,
-      dueDate: updatedTask.due_date,
-      startedAt: updatedTask.started_at,
-      completedAt: updatedTask.completed_at,
-      position: Number(updatedTask.position),
-      createdAt: updatedTask.created_at,
-      updatedAt: updatedTask.updated_at,
-    };
+    const nextDueDate =
+      dto.dueDate !== undefined
+        ? dto.dueDate
+          ? new Date(dto.dueDate)
+          : null
+        : undefined;
+
+    const currentDueTime = task.due_date?.getTime() ?? null;
+    const nextDueTime = nextDueDate?.getTime() ?? null;
+
+    if (dto.dueDate !== undefined && currentDueTime !== nextDueTime) {
+      activities.push({
+        task_id: task.id,
+        activity: TaskActivity.DUE_DATE_CHANGED,
+        actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+        actor_name_snapshot: user.userInfo?.full_name || '',
+        user_id: userId,
+        metadata: {
+          before: task.due_date?.toISOString() ?? null,
+          after: nextDueDate?.toISOString() ?? null,
+        },
+      });
+    }
+
+    const operations: Prisma.PrismaPromise<unknown>[] = [
+      this.prisma.task.update({
+        where: {
+          id: task.id,
+        },
+        data: {
+          ...(dto.title !== undefined && { title: dto.title }),
+          ...(dto.description !== undefined && {
+            description: dto.description,
+          }),
+          ...(dto.status !== undefined && { status: dto.status }),
+          ...(dto.priority !== undefined && { priority: dto.priority }),
+          ...(dto.estimate !== undefined && { estimate: dto.estimate }),
+          ...(dto.dueDate !== undefined && {
+            due_date: nextDueDate,
+          }),
+          ...(dto.assigneeId !== undefined && {
+            assignee_id: dto.assigneeId || null,
+          }),
+          ...(dto.parentTaskId !== undefined && {
+            parent_task_id: dto.parentTaskId || null,
+          }),
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          status: true,
+          priority: true,
+          estimate: true,
+          due_date: true,
+          started_at: true,
+          completed_at: true,
+          position: true,
+          created_at: true,
+          updated_at: true,
+        },
+      }),
+    ];
+
+    if (activities.length > 0) {
+      operations.push(
+        this.prisma.taskActivityLog.createMany({
+          data: activities,
+        }),
+      );
+    }
+    const [updatedTask] = await this.prisma.$transaction(operations);
+
+    return updatedTask;
   }
 
   async getTasksByProjectSlug(projectSlug: string, workspaceSlug: string) {
@@ -417,6 +587,15 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
+    const activities = await this.prisma.taskActivityLog.findMany({
+      where: {
+        task_id: t.id,
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+
     return {
       id: t.id,
       title: t.title,
@@ -431,6 +610,18 @@ export class TasksService {
       startedAt: t.started_at,
 
       parentTask: t.parent_task,
+
+      activities: activities.map((a) => ({
+        id: a.id,
+        activity: a.activity,
+        actor: {
+          id: a.user_id,
+          avatar: a.actor_avatar_snapshot,
+          fullName: a.actor_name_snapshot,
+        },
+        metadata: a.metadata,
+        createdAt: a.created_at,
+      })),
 
       subtasks: t.sub_tasks.map((st) => ({
         id: st.id,

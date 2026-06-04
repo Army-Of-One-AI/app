@@ -1,13 +1,13 @@
 import { apiClient } from "@/shared/api/apiClient";
-import { Task } from "../types";
+import { TaskDetails } from "../types";
 
 export const getTaskById = async (
   taskId: string,
   projectSlug: string,
-  workspaceSlug: string,
+  workspaceSlug: string
 ) => {
   const response = await apiClient.get(
-    `/workspaces/${workspaceSlug}/projects/${projectSlug}/tasks/${taskId}`,
+    `/workspaces/${workspaceSlug}/projects/${projectSlug}/tasks/${taskId}`
   );
-  return response.data as Task;
+  return response.data as TaskDetails;
 };

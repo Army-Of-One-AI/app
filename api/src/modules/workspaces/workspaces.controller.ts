@@ -181,12 +181,19 @@ export class WorkspacesController {
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_UPDATE_ROLES))
   @Patch(':workspaceSlug/projects/:projectSlug/tasks/:taskId')
   async updateTask(
+    @CurrentUser() user: { id: string },
     @Param('workspaceSlug') wsSlug: string,
     @Param('projectSlug') pjSlug: string,
     @Param('taskId') taskId: string,
     @Body() payload: UpdateTaskDto,
   ) {
-    return await this.tasksService.updateTask(wsSlug, pjSlug, taskId, payload);
+    return await this.tasksService.updateTask(
+      user.id,
+      wsSlug,
+      pjSlug,
+      taskId,
+      payload,
+    );
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_DELETE_ROLES))
