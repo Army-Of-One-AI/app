@@ -197,6 +197,8 @@ export class TasksService {
     const tasks = await this.prisma.task.findMany({
       where: {
         parent_task_id: null,
+        deleted_at: null,
+        archived_at: null,
         project: {
           slug: projectSlug,
           workspace: {
@@ -282,8 +284,10 @@ export class TasksService {
       where: {
         id,
         deleted_at: null,
+        archived_at: null,
         project: {
           slug: projectSlug,
+          deleted_at: null,
         },
       },
       select: {
@@ -484,15 +488,89 @@ export class TasksService {
   }
 
   async deleteTask(taskId: string, projectSlug: string) {
-    await this.prisma.task.update({
+    const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
         project: {
           slug: projectSlug,
         },
+        deleted_at: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    await this.prisma.task.updateMany({
+      where: {
+        OR: [{ id: taskId }, { parent_task_id: taskId }],
       },
       data: {
         deleted_at: new Date(),
+      },
+    });
+
+    return { success: true };
+  }
+
+  async archiveTask(taskId: string, projectSlug: string) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        project: {
+          slug: projectSlug,
+        },
+        deleted_at: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    await this.prisma.task.updateMany({
+      where: {
+        OR: [{ id: taskId }, { parent_task_id: taskId }],
+      },
+      data: {
+        archived_at: new Date(),
+      },
+    });
+
+    return { success: true };
+  }
+
+  async unarchiveTask(taskId: string, projectSlug: string) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        project: {
+          slug: projectSlug,
+        },
+        deleted_at: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    await this.prisma.task.updateMany({
+      where: {
+        OR: [{ id: taskId }, { parent_task_id: taskId }],
+      },
+      data: {
+        archived_at: null,
       },
     });
 

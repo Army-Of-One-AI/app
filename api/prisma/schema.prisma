@@ -65,6 +65,28 @@ enum ProjectStatus {
   Archived
 }
 
+enum TaskActivity {
+  TASK_CREATED
+  TASK_ARCHIVED
+  TASK_RESTORED
+  TASK_DELETED
+
+  TITLE_CHANGED
+  DESCRIPTION_UPDATED
+
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  ASSIGNEE_CHANGED
+  DUE_DATE_CHANGED
+
+  SUBTASK_CREATED
+  SUBTASK_REMOVED
+
+  COMMENT_ADDED
+  COMMENT_EDITED
+  COMMENT_DELETED
+}
+
 model Workspace {
   id String @id @default(uuid())
 
@@ -240,6 +262,7 @@ model Task {
   due_date     DateTime?
   started_at   DateTime?
   completed_at DateTime?
+  archived_at  DateTime?
 
   position Decimal @default(0)
 
@@ -296,4 +319,22 @@ model Document {
   @@index([creator_id])
   @@index([status])
   @@index([project_id, status])
+}
+
+model TaskActivityLog {
+  id                  String       @id @default(uuid())
+
+  task_id              String
+  user_id              String?
+
+  actor_name_snapshot  String?
+  actor_avatar_snapshot String?
+
+  activity             TaskActivity
+  metadata             Json?
+
+  created_at           DateTime     @default(now())
+
+  @@index([task_id, created_at])
+  @@index([user_id, created_at])
 }

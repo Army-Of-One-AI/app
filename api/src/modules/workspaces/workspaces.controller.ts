@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
   UseInterceptors,
@@ -27,6 +28,7 @@ import { CurrentUserProjectPermissionsInterceptor } from 'src/shared/interceptor
 import {
   PROJECT_CREATE_ROLES,
   PROJECT_READ_ROLES,
+  TASK_ARCHIVE_ROLES,
   TASK_CREATE_ROLES,
   TASK_DELETE_ROLES,
   TASK_READ_ROLES,
@@ -194,6 +196,24 @@ export class WorkspacesController {
     @Param('taskId') taskId: string,
   ) {
     return await this.tasksService.deleteTask(taskId, pjSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_ARCHIVE_ROLES))
+  @Put(':workspaceSlug/projects/:projectSlug/tasks/:taskId/archive')
+  async archiveTask(
+    @Param('projectSlug') pjSlug: string,
+    @Param('taskId') taskId: string,
+  ) {
+    return await this.tasksService.archiveTask(taskId, pjSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_ARCHIVE_ROLES))
+  @Put(':workspaceSlug/projects/:projectSlug/tasks/:taskId/unarchive')
+  async unarchiveTask(
+    @Param('projectSlug') pjSlug: string,
+    @Param('taskId') taskId: string,
+  ) {
+    return await this.tasksService.unarchiveTask(taskId, pjSlug);
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))

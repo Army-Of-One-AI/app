@@ -94,6 +94,13 @@ export const TASK_DELETE_ROLES: ProjectRole[] = [
   ProjectRole.Product_Owner,
 ];
 
+export const TASK_ARCHIVE_ROLES: ProjectRole[] = [
+  ProjectRole.Owner,
+  ProjectRole.Project_Manager,
+  ProjectRole.Tech_Lead,
+  ProjectRole.Product_Owner,
+];
+
 export const TASK_UPDATE_ROLES: ProjectRole[] = [
   ProjectRole.Owner,
   ProjectRole.Product_Owner,
@@ -150,6 +157,9 @@ export class PermissionsService {
         canDeleteTask: !!projectRole && TASK_DELETE_ROLES.includes(projectRole),
 
         canAssignTask: !!projectRole && TASK_ASSIGN_ROLES.includes(projectRole),
+
+        canArchiveTask:
+          !!projectRole && TASK_ARCHIVE_ROLES.includes(projectRole),
 
         canUpdateTaskStatus:
           !!projectRole && TASK_STATUS_UPDATE_ROLES.includes(projectRole),

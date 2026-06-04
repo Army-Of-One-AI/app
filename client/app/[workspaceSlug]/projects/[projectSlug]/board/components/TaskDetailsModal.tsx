@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Task } from "@/features/tasks/types";
 import { TaskPriority, TaskStatus } from "@/shared/types/enums";
@@ -14,8 +14,13 @@ import useUpdateTask from "@/features/tasks/hooks/useUpdateTask";
 import useCreateTask from "@/features/tasks/hooks/useCreateTask";
 import { parseRichText } from "@/shared/utils/helpers";
 import { ProjectMember } from "@/features/projects/types";
-import { classNames } from "@/shared/styles/classNames";
+import { classNames, taskStatusConfig } from "@/shared/styles/classNames";
 import Popover from "@/shared/ui/Popover";
+import TaskActions from "./TaskActions";
+import { ChevronDown, Ellipsis, X } from "lucide-react";
+import useDeleteTask from "@/features/tasks/hooks/useDeleteTask";
+import TaskVerifyModal from "./TaskVerifyModal";
+import useArchiveTask from "@/features/tasks/hooks/useArchiveTask";
 
 type Props = {
   taskId: string;
@@ -49,6 +54,7 @@ export default function TaskDetailsModal({
   onUpdate,
   onClickSubtask,
 }: Props) {
+  const router = useRouter();
   const params = useParams();
   const queryClient = useQueryClient();
 
@@ -66,6 +72,8 @@ export default function TaskDetailsModal({
     workspaceSlug,
     projectSlug
   );
+  const { mutateAsync: deleteTask, isPending: isDeletingTask } = useDeleteTask();
+  const { mutateAsync: archiveTask, isPending: isArchivingTask } = useArchiveTask();
 
   const [loadedTaskId, setLoadedTaskId] = useState<string | null>(null);
 
@@ -90,6 +98,11 @@ export default function TaskDetailsModal({
 
   const disabled = !canUpdateTask || isPending;
   const subtaskDisabled = !canUpdateTask || isPending || isCreatingTask;
+
+  const [isOpenDeleteTaskModal, setOpenDeleteTaskModal] = useState(false)
+  const [isOpenArchiveTaskModal, setOpenArchiveTaskModal] = useState(false)
+
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
 
   const selectedAssignee = useMemo(() => {
     return members.find((member) => member.id === assigneeId) ?? null;
@@ -222,15 +235,41 @@ export default function TaskDetailsModal({
           position="right"
           onClose={() => setOpenPopover(false)}
           isOpen={isOpenPopover}
-          content={<h1>asd</h1>}
+          content={
+            <TaskActions
+              onClickDelete={() => {
+                setOpenDeleteTaskModal(true);
+                setOpenPopover(false);
+              }}
+              onClickArchive={() => {
+                setOpenArchiveTaskModal(true);
+                setOpenPopover(false);
+              }}
+            />
+          }
         >
-          <button
-            className="cursor-pointer bg-[red]"
-            type="button"
-            onClick={() => setOpenPopover((curr) => !curr)}
-          >
-            Edit
-          </button>
+          <div className="flex justify-end items-center">
+            <button
+              className={`cursor-pointer w-8 h-8 overflow-hidden relative hover:bg-(--border)
+                        rounded-sm flex ${isOpenPopover && `border border-(--btn-primary-bg)`}
+                        items-center justify-center`}
+              type="button"
+              onClick={() => setOpenPopover((curr) => !curr)}
+            >
+              <div className={`${isOpenPopover && `bg-(--btn-primary-bg) opacity-20`} w-full h-full absolute`} />
+              <Ellipsis className={`${isOpenPopover && `text-[${classNames.primaryColor}]`} transition-colors relative`} size={20} />
+            </button>
+            <button
+            onClick={() => onClose()}
+              className={`cursor-pointer w-8 h-8 overflow-hidden relative
+                        rounded-sm flex hover:bg-(--border)
+                        items-center justify-center`}
+              type="button"
+            >
+              <div className={`w-full h-full absolute`} />
+              <X className={`transition-colors relative`} size={20} />
+            </button>
+          </div>
         </Popover>
       </div>
       <form
@@ -415,18 +454,97 @@ export default function TaskDetailsModal({
           </section>
 
           <aside className="space-y-3">
-            <select
-              disabled={disabled}
-              value={status}
-              onChange={(e) => setStatus(e.target.value as TaskStatus)}
-              className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {Object.values(TaskStatus).map((val) => (
-                <option key={val} value={val}>
-                  {val.split("_").join(" ")}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                style={{
+                  background: taskStatusConfig[status].bg,
+                  color: taskStatusConfig[status].text,
+                }}
+                type="button"
+                disabled={disabled}
+                onClick={() => setIsStatusOpen((curr) => !curr)}
+                className={`
+                inline-flex h-10 items-center gap-2 rounded-md
+                bg-blue-600 px-4 text-sm font-bold text-white
+                shadow-sm transition hover:bg-blue-500 cursor-pointer
+                disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                {Object.entries(taskStatusConfig).find(([key,]) => key === status)?.[1].label ?? status}
+
+                <span
+                  className={`transition-transform gb ${isStatusOpen ? "rotate-180" : ""
+                    }`}
+                >
+                  <ChevronDown size={20} />
+                </span>
+              </button>
+
+              {isStatusOpen && (
+                <div
+                  className="
+                  absolute left-0 top-full z-50 mt-3 w-80 overflow-hidden
+                  rounded-lg border border-zinc-700 bg-zinc-900
+                  shadow-2xl shadow-black/40
+                "
+                >
+                  <div className="py-3">
+                    {Object.entries(taskStatusConfig).map(([key, value]) => {
+                      const isSelected = key === status;
+
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setStatus(key as TaskStatus);
+                            setIsStatusOpen(false);
+                          }}
+                          className={`
+                          flex w-full items-center px-6 py-2.5 text-left
+                          transition hover:bg-zinc-800
+                          ${isSelected ? "border-l-2 border-blue-500 bg-zinc-800" : ""}
+                        `}
+                        >
+                          <span
+                            style={{
+                              background: `${value.bg}`,
+                              color: `${value.text}`,
+                            }}
+                            className={`
+                            rounded-md px-2 py-0.5 text-xs font-black uppercase
+                            tracking-wide`}>
+                            {value.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-zinc-700 py-3">
+                    <button
+                      type="button"
+                      className="block w-full px-6 py-3 text-left text-sm font-bold text-zinc-300 hover:bg-zinc-800"
+                    >
+                      Create status
+                    </button>
+
+                    <button
+                      type="button"
+                      className="block w-full px-6 py-3 text-left text-sm font-bold text-zinc-300 hover:bg-zinc-800"
+                    >
+                      Edit status
+                    </button>
+
+                    <button
+                      type="button"
+                      className="block w-full px-6 py-3 text-left text-sm font-bold text-zinc-300 hover:bg-zinc-800"
+                    >
+                      View workflow
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
               <div className="border-b border-[var(--border)] px-4 py-3">
@@ -609,6 +727,49 @@ export default function TaskDetailsModal({
           </aside>
         </div>
       </form>
+      <TaskVerifyModal
+        mode="delete"
+        taskTitle={task.title}
+        isOpen={isOpenDeleteTaskModal}
+        onClose={() => setOpenDeleteTaskModal(false)}
+        isLoading={isDeletingTask}
+        onConfirm={async () => {
+          await deleteTask({
+            taskId,
+            projectSlug,
+            workspaceSlug
+          }, {
+            onSuccess: async () => {
+              await queryClient.invalidateQueries({
+                queryKey: ["get-tasks-by-project-slug", projectSlug, workspaceSlug],
+              });
+              setOpenDeleteTaskModal(false);
+              onClose();
+            }
+          })
+        }} />
+
+      <TaskVerifyModal
+        mode="archive"
+        taskTitle={task.title}
+        isOpen={isOpenArchiveTaskModal}
+        onClose={() => setOpenArchiveTaskModal(false)}
+        isLoading={isArchivingTask}
+        onConfirm={async () => {
+          await archiveTask({
+            taskId,
+            projectSlug,
+            workspaceSlug
+          }, {
+            onSuccess: async () => {
+              await queryClient.invalidateQueries({
+                queryKey: ["get-tasks-by-project-slug", projectSlug, workspaceSlug],
+              });
+              setOpenArchiveTaskModal(false);
+              onClose();
+            }
+          })
+        }} />
     </div>
   );
 }

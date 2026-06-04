@@ -28,7 +28,7 @@ export default function UserPopoverContent({
   const router = useRouter();
 
   return (
-    <div className="w-64">
+    <div className="w-64 p-2">
       <button type="button" className={itemClass}>
         Settings
       </button>
@@ -62,8 +62,7 @@ export default function UserPopoverContent({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -4 }}
               transition={{ duration: 0.1 }}
-              className={`
-                            absolute left-full top-0 z-[1000] ml-1
+              className={`absolute left-full top-0 z-[1000] ml-1
                             w-72 rounded-xl border p-1.5 shadow-xl
                             ${classNames.background}
                             ${classNames.border}

@@ -59,11 +59,12 @@ export default function ProjectBoardPage() {
   const {
     data: apiTasks,
     isLoading,
+    isFetching,
     error,
   } = useTasksByProjectSlug(projectSlug, workspaceSlug);
 
   const createTaskMutation = useCreateTask(workspaceSlug, projectSlug);
-  const { mutate: updateTask, isPending: isUpdatingTask } = useUpdateTask();
+  const { mutate: updateTask } = useUpdateTask();
 
   const [mounted, setMounted] = useState(false);
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
@@ -86,7 +87,7 @@ export default function ProjectBoardPage() {
   useEffect(() => {
     if (!apiTasks) return;
     setBoardTasks(apiTasks.tasks);
-  }, [apiTasks]);
+  }, [apiTasks, isFetching]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

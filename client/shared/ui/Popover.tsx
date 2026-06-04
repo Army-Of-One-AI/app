@@ -137,7 +137,7 @@ export default function Popover({
             style={style}
             className={`
               absolute top-full z-[999] mt-2 min-w-60
-              rounded-md border p-2 shadow-lg
+              rounded-md border shadow-lg
               ${classNames.background}
               ${classNames.border}
             `}

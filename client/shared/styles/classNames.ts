@@ -1,8 +1,11 @@
+import { TaskStatus } from "../types/enums";
+
 export const classNames = {
   /* Layout */
   background: "bg-[var(--background)]",
   surface: "bg-[var(--surface)]",
   border: "border-[var(--border)]",
+  primaryColor: "var(--primary)",
 
   /* Text */
   text: {
@@ -109,3 +112,40 @@ export const taskPriorityColors = {
 
   Urgent: "bg-[var(--priority-critical-bg)] text-[var(--priority-critical-text)]",
 } as const;
+
+export const taskStatusConfig: Record<TaskStatus, {
+  label: string;
+  bg: string;
+  text: string;
+}> = {
+  Backlog: {
+    label: "BACKLOG",
+    bg: "#4b556320",
+    text: "#d1d5db",
+  },
+  Todo: {
+    label: "TODO",
+    bg: "#dbeafe",
+    text: "#1e293b",
+  },
+  In_Progress: {
+    label: "IN PROGRESS",
+    bg: "#bfdbfe",
+    text: "#1e293b",
+  },
+  Review: {
+    label: "REVIEW",
+    bg: "#fde68a",
+    text: "#1e293b",
+  },
+  Done: {
+    label: "DONE",
+    bg: "#bef264",
+    text: "#1e293b",
+  },
+  Canceled: {
+    label: "CANCELED",
+    bg: "#fca5a5",
+    text: "#1e293b",
+  },
+};
