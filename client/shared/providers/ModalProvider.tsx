@@ -7,6 +7,8 @@ import { classNames } from "@/shared/styles/classNames";
 
 type OpenModalOption = {
   title?: string;
+  customHeader?: React.ReactNode;
+  showHeader?: boolean;
   modalContent: React.ReactNode;
 };
 
@@ -25,12 +27,16 @@ export default function ModalProvider({
 }) {
   const [modalTitle, setModalTitle] = useState("");
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  const [header, setHeader] = useState<React.ReactNode>(null);
+  const [showHeader, setShowHeader] = useState(true);
 
   const value = useMemo(
     () => ({
       openModal: (opt: OpenModalOption) => {
         setModalContent(opt.modalContent);
         setModalTitle(opt.title || "");
+        setHeader(opt.customHeader || null);
+        setShowHeader(opt.showHeader ?? true);
       },
       closeModal: () => setModalContent(null),
     }),
@@ -83,21 +89,28 @@ export default function ModalProvider({
                 damping: 35,
                 mass: 0.8,
               }}
-              className={`flex flex-col rounded-lg ${classNames.surface} p-6 shadow-2xl`}
+              className={`flex flex-col rounded-lg ${classNames.surface} px-6 pb-6 shadow-2xl`}
             >
-              <div
-                className={`flex w-full flex-row items-center justify-between border-b border-solid ${classNames.border} pb-4`}
-              >
+              {showHeader && (
                 <div
-                  className={`text-md font-bold ${classNames.text.secondary}`}
+                  className={`flex w-full flex-row items-center pt-6 justify-between border-b border-solid ${classNames.border} pb-4`}
                 >
-                  {modalTitle}
-                </div>
+                  {!header && (
+                    <>
+                      <div
+                        className={`text-md font-bold ${classNames.text.secondary}`}
+                      >
+                        {modalTitle}
+                      </div>
 
-                <button onClick={() => setModalContent(null)}>
-                  <X className={classNames.text.secondary} />
-                </button>
-              </div>
+                      <button onClick={() => setModalContent(null)}>
+                        <X className={classNames.text.secondary} />
+                      </button>
+                    </>
+                  )}
+                  {header && header}
+                </div>
+              )}
 
               <div className="pt-5">{modalContent}</div>
             </motion.div>

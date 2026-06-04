@@ -189,6 +189,7 @@ export default function ProjectBoardPage() {
   const handleOpenTaskDetails = (task: Task) => {
     openModal({
       title: "Task details",
+      showHeader: false,
       modalContent: (
         <TaskDetailsModal
           members={members ?? []}

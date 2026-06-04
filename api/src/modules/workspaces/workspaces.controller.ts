@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -27,6 +28,7 @@ import {
   PROJECT_CREATE_ROLES,
   PROJECT_READ_ROLES,
   TASK_CREATE_ROLES,
+  TASK_DELETE_ROLES,
   TASK_READ_ROLES,
   TASK_UPDATE_ROLES,
 } from '../permissions/permissions.service';
@@ -183,6 +185,15 @@ export class WorkspacesController {
     @Body() payload: UpdateTaskDto,
   ) {
     return await this.tasksService.updateTask(wsSlug, pjSlug, taskId, payload);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_DELETE_ROLES))
+  @Delete(':workspaceSlug/projects/:projectSlug/tasks/:taskId')
+  async deleteTask(
+    @Param('projectSlug') pjSlug: string,
+    @Param('taskId') taskId: string,
+  ) {
+    return await this.tasksService.deleteTask(taskId, pjSlug);
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))

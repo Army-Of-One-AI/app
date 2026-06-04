@@ -482,4 +482,20 @@ export class TasksService {
         : null,
     };
   }
+
+  async deleteTask(taskId: string, projectSlug: string) {
+    await this.prisma.task.update({
+      where: {
+        id: taskId,
+        project: {
+          slug: projectSlug,
+        },
+      },
+      data: {
+        deleted_at: new Date(),
+      },
+    });
+
+    return { success: true };
+  }
 }

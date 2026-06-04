@@ -116,6 +116,7 @@ export default function Sidebar() {
     >
       <Popover
         isOpen={isOpenPopover}
+        position="right"
         onClose={() => setOpenPopover(false)}
         content={<UserPopoverContent userInfo={userInfo} />}
       >
@@ -248,7 +249,9 @@ export default function Sidebar() {
         aria-label={
           theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
         }
-        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        title={
+          theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+        }
         className={`
           mt-8 flex h-9 w-9 items-center justify-center rounded-lg border
           ${classNames.border}

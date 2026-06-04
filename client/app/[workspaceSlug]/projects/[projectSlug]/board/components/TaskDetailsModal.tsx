@@ -15,6 +15,7 @@ import useCreateTask from "@/features/tasks/hooks/useCreateTask";
 import { parseRichText } from "@/shared/utils/helpers";
 import { ProjectMember } from "@/features/projects/types";
 import { classNames } from "@/shared/styles/classNames";
+import Popover from "@/shared/ui/Popover";
 
 type Props = {
   taskId: string;
@@ -84,6 +85,8 @@ export default function TaskDetailsModal({
   const [isCreatingSubtask, setIsCreatingSubtask] = useState(false);
   const [subtaskTitle, setSubtaskTitle] = useState("");
   const [subtaskAssigneeId, setSubtaskAssigneeId] = useState("");
+
+  const [isOpenPopover, setOpenPopover] = useState(false);
 
   const disabled = !canUpdateTask || isPending;
   const subtaskDisabled = !canUpdateTask || isPending || isCreatingTask;
@@ -213,380 +216,400 @@ export default function TaskDetailsModal({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex h-[82vh] w-[92vw] max-w-305 flex-col overflow-hidden"
-    >
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_420px] gap-8 overflow-y-auto px-7 py-6">
-        <section className="min-w-0 space-y-7">
-          <input
-            disabled={disabled}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={`w-full text-2xl font-semibold ${classNames.text.primary} ${inlineControlClassName}`}
-          />
-
-          <div>
-            <h3 className="mb-2 font-semibold text-[var(--text-primary)]">
-              Description
-            </h3>
-
-            <RichTextEditor
-              key={task.id}
-              value={description}
-              onChange={setDescription}
+    <div className="flex flex-col w-full">
+      <div className="w-full px-4 flex justify-end items-center">
+        <Popover
+          position="right"
+          onClose={() => setOpenPopover(false)}
+          isOpen={isOpenPopover}
+          content={<h1>asd</h1>}
+        >
+          <button
+            className="cursor-pointer bg-[red]"
+            type="button"
+            onClick={() => setOpenPopover((curr) => !curr)}
+          >
+            Edit
+          </button>
+        </Popover>
+      </div>
+      <form
+        onSubmit={handleSubmit}
+        className="flex h-[82vh] w-[92vw] max-w-305 flex-col overflow-hidden"
+      >
+        <div className="grid min-h-0 flex-1 grid-cols-[1fr_420px] gap-8 overflow-y-auto px-7 py-6">
+          <section className="min-w-0 space-y-7">
+            <input
+              disabled={disabled}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={`w-full text-2xl font-semibold ${classNames.text.primary} ${inlineControlClassName}`}
             />
-          </div>
 
-          <div>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="font-semibold text-[var(--text-primary)]">
-                Subtasks
+            <div>
+              <h3 className="mb-2 font-semibold text-[var(--text-primary)]">
+                Description
               </h3>
 
-              <span className="text-xs font-medium text-[var(--text-secondary)]">
-                {subtasks.length === 0
-                  ? "No subtasks"
-                  : `${subtaskProgress}% completed`}
-              </span>
-            </div>
-
-            <div className="h-2 overflow-hidden rounded-full bg-[var(--secondary)]">
-              <div
-                className="h-full rounded-full bg-[var(--primary)] transition-all"
-                style={{ width: `${subtaskProgress}%` }}
+              <RichTextEditor
+                key={task.id}
+                value={description}
+                onChange={setDescription}
               />
             </div>
 
-            <div className="mt-3 overflow-hidden rounded-lg border border-[var(--border)]">
-              <div className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px] bg-[var(--secondary)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
-                <span />
-                <span>Subtask</span>
-                <span>Assignee</span>
-                <span>Status</span>
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-[var(--text-primary)]">
+                  Subtasks
+                </h3>
+
+                <span className="text-xs font-medium text-[var(--text-secondary)]">
+                  {subtasks.length === 0
+                    ? "No subtasks"
+                    : `${subtaskProgress}% completed`}
+                </span>
               </div>
 
-              {subtasks.map((subtask) => (
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--secondary)]">
                 <div
-                  key={subtask.id}
-                  className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px] items-center border-t border-[var(--border)] px-3 py-3 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={subtask.status === TaskStatus.Done}
-                    readOnly
-                    className="h-4 w-4"
-                  />
+                  className="h-full rounded-full bg-[var(--primary)] transition-all"
+                  style={{ width: `${subtaskProgress}%` }}
+                />
+              </div>
 
-                  <span
-                    onClick={() => onClickSubtask(subtask)}
-                    className="min-w-0 cursor-pointer truncate text-[var(--text-primary)] hover:underline"
-                  >
-                    {subtask.title}
-                  </span>
-
-                  <span className="min-w-0 truncate text-xs text-[var(--text-secondary)]">
-                    {subtask.assignee?.fullName ||
-                      subtask.assignee?.username ||
-                      "Unassigned"}
-                  </span>
-
-                  <span className="text-xs text-[var(--text-secondary)]">
-                    {subtask.status.split("_").join(" ")}
-                  </span>
+              <div className="mt-3 overflow-hidden rounded-lg border border-[var(--border)]">
+                <div className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px] bg-[var(--secondary)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
+                  <span />
+                  <span>Subtask</span>
+                  <span>Assignee</span>
+                  <span>Status</span>
                 </div>
-              ))}
 
-              {isCreatingSubtask ? (
-                <div className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px_92px] items-center border-t border-[var(--border)] px-3 py-2 text-sm">
-                  <input type="checkbox" disabled className="h-4 w-4" />
-
-                  <input
-                    autoFocus
-                    disabled={subtaskDisabled}
-                    value={subtaskTitle}
-                    onChange={(e) => setSubtaskTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        setIsCreatingSubtask(false);
-                        setSubtaskTitle("");
-                        setSubtaskAssigneeId("");
-                      }
-
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleCreateSubtask();
-                      }
-                    }}
-                    placeholder="Create subtask"
-                    className={`min-w-0 ${inlineControlClassName} ${classNames.input.text} ${classNames.input.placeholder}`}
-                  />
-
-                  <select
-                    disabled={!canAssignTask || subtaskDisabled}
-                    value={subtaskAssigneeId}
-                    onChange={(e) => setSubtaskAssigneeId(e.target.value)}
-                    className="min-w-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                {subtasks.map((subtask) => (
+                  <div
+                    key={subtask.id}
+                    className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px] items-center border-t border-[var(--border)] px-3 py-3 text-sm"
                   >
-                    <option value="">Unassigned</option>
+                    <input
+                      type="checkbox"
+                      checked={subtask.status === TaskStatus.Done}
+                      readOnly
+                      className="h-4 w-4"
+                    />
 
-                    {members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.fullName || member.username}
-                      </option>
-                    ))}
-                  </select>
-
-                  <span className="text-xs text-[var(--text-secondary)]">
-                    Todo
-                  </span>
-
-                  <div className="flex items-center justify-end gap-1">
-                    <button
-                      type="button"
-                      disabled={subtaskDisabled || !subtaskTitle.trim()}
-                      onClick={handleCreateSubtask}
-                      className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+                    <span
+                      onClick={() => onClickSubtask(subtask)}
+                      className="min-w-0 cursor-pointer truncate text-[var(--text-primary)] hover:underline"
                     >
-                      {isCreatingTask ? "Adding..." : "Add"}
-                    </button>
+                      {subtask.title}
+                    </span>
 
-                    <button
-                      type="button"
-                      disabled={subtaskDisabled}
-                      onClick={() => {
-                        setIsCreatingSubtask(false);
-                        setSubtaskTitle("");
-                        setSubtaskAssigneeId("");
-                      }}
-                      className="rounded-md px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
+                    <span className="min-w-0 truncate text-xs text-[var(--text-secondary)]">
+                      {subtask.assignee?.fullName ||
+                        subtask.assignee?.username ||
+                        "Unassigned"}
+                    </span>
+
+                    <span className="text-xs text-[var(--text-secondary)]">
+                      {subtask.status.split("_").join(" ")}
+                    </span>
                   </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={subtaskDisabled}
-                  onClick={() => setIsCreatingSubtask(true)}
-                  className="flex w-full items-center gap-3 border-t border-[var(--border)] px-3 py-3 text-left text-sm hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  <span className="text-[var(--primary)]">
-                    + Create subtask
-                  </span>
-                </button>
-              )}
-            </div>
-          </div>
+                ))}
 
-          <div>
-            <h3 className="mb-3 font-semibold text-[var(--text-primary)]">
-              Activity
-            </h3>
+                {isCreatingSubtask ? (
+                  <div className="grid grid-cols-[32px_minmax(0,1fr)_180px_90px_92px] items-center border-t border-[var(--border)] px-3 py-2 text-sm">
+                    <input type="checkbox" disabled className="h-4 w-4" />
 
-            <div className="rounded-lg border border-[var(--border)] p-4">
-              <input
-                placeholder="Add a comment..."
-                className={`w-full text-sm ${classNames.input.text} ${classNames.input.placeholder} ${inlineControlClassName}`}
-              />
-            </div>
-          </div>
-        </section>
+                    <input
+                      autoFocus
+                      disabled={subtaskDisabled}
+                      value={subtaskTitle}
+                      onChange={(e) => setSubtaskTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setIsCreatingSubtask(false);
+                          setSubtaskTitle("");
+                          setSubtaskAssigneeId("");
+                        }
 
-        <aside className="space-y-3">
-          <select
-            disabled={disabled}
-            value={status}
-            onChange={(e) => setStatus(e.target.value as TaskStatus)}
-            className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {Object.values(TaskStatus).map((val) => (
-              <option key={val} value={val}>
-                {val.split("_").join(" ")}
-              </option>
-            ))}
-          </select>
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleCreateSubtask();
+                        }
+                      }}
+                      placeholder="Create subtask"
+                      className={`min-w-0 ${inlineControlClassName} ${classNames.input.text} ${classNames.input.placeholder}`}
+                    />
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-            <div className="border-b border-[var(--border)] px-4 py-3">
-              <h3 className="font-semibold text-[var(--text-primary)]">
-                Details
-              </h3>
-            </div>
+                    <select
+                      disabled={!canAssignTask || subtaskDisabled}
+                      value={subtaskAssigneeId}
+                      onChange={(e) => setSubtaskAssigneeId(e.target.value)}
+                      className="min-w-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="">Unassigned</option>
 
-            <div className="space-y-5 px-5 py-5 text-sm">
-              <DetailRow label="Assignee">
-                <div className="relative">
+                      {members.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.fullName || member.username}
+                        </option>
+                      ))}
+                    </select>
+
+                    <span className="text-xs text-[var(--text-secondary)]">
+                      Todo
+                    </span>
+
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        disabled={subtaskDisabled || !subtaskTitle.trim()}
+                        onClick={handleCreateSubtask}
+                        className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isCreatingTask ? "Adding..." : "Add"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={subtaskDisabled}
+                        onClick={() => {
+                          setIsCreatingSubtask(false);
+                          setSubtaskTitle("");
+                          setSubtaskAssigneeId("");
+                        }}
+                        className="rounded-md px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    disabled={!canAssignTask || isPending}
-                    onClick={() => setIsAssigneeOpen((curr) => !curr)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
+                    disabled={subtaskDisabled}
+                    onClick={() => setIsCreatingSubtask(true)}
+                    className="flex w-full items-center gap-3 border-t border-[var(--border)] px-3 py-3 text-left text-sm hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {selectedAssignee ? (
-                      <>
-                        <MemberAvatar member={selectedAssignee} size="sm" />
-
-                        <span className="min-w-0 flex-1 truncate text-[var(--text-primary)]">
-                          {selectedAssignee.fullName ||
-                            selectedAssignee.username}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-semibold text-[var(--text-secondary)]">
-                          —
-                        </div>
-
-                        <span className="text-[var(--text-secondary)]">
-                          Unassigned
-                        </span>
-                      </>
-                    )}
+                    <span className="text-[var(--primary)]">
+                      + Create subtask
+                    </span>
                   </button>
+                )}
+              </div>
+            </div>
 
-                  {isAssigneeOpen && (
-                    <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg">
-                      <div className="border-b border-[var(--border)] p-2">
-                        <input
-                          autoFocus
-                          value={assigneeSearch}
-                          onChange={(e) => setAssigneeSearch(e.target.value)}
-                          placeholder="Search member..."
-                          className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${classNames.input.bg} ${classNames.input.border} ${classNames.input.text} ${classNames.input.placeholder} ${classNames.input.focus}`}
-                        />
-                      </div>
+            <div>
+              <h3 className="mb-3 font-semibold text-[var(--text-primary)]">
+                Activity
+              </h3>
 
-                      <div className="max-h-60 overflow-y-auto py-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAssigneeId("");
-                            setIsAssigneeOpen(false);
-                            setAssigneeSearch("");
-                          }}
-                          className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
-                        >
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--secondary)] text-sm font-semibold text-[var(--text-secondary)]">
+              <div className="rounded-lg border border-[var(--border)] p-4">
+                <input
+                  placeholder="Add a comment..."
+                  className={`w-full text-sm ${classNames.input.text} ${classNames.input.placeholder} ${inlineControlClassName}`}
+                />
+              </div>
+            </div>
+          </section>
+
+          <aside className="space-y-3">
+            <select
+              disabled={disabled}
+              value={status}
+              onChange={(e) => setStatus(e.target.value as TaskStatus)}
+              className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {Object.values(TaskStatus).map((val) => (
+                <option key={val} value={val}>
+                  {val.split("_").join(" ")}
+                </option>
+              ))}
+            </select>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <div className="border-b border-[var(--border)] px-4 py-3">
+                <h3 className="font-semibold text-[var(--text-primary)]">
+                  Details
+                </h3>
+              </div>
+
+              <div className="space-y-5 px-5 py-5 text-sm">
+                <DetailRow label="Assignee">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={!canAssignTask || isPending}
+                      onClick={() => setIsAssigneeOpen((curr) => !curr)}
+                      className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {selectedAssignee ? (
+                        <>
+                          <MemberAvatar member={selectedAssignee} size="sm" />
+
+                          <span className="min-w-0 flex-1 truncate text-[var(--text-primary)]">
+                            {selectedAssignee.fullName ||
+                              selectedAssignee.username}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-semibold text-[var(--text-secondary)]">
                             —
                           </div>
 
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-[var(--text-primary)]">
-                              Unassigned
-                            </p>
-                            <p className="truncate text-xs text-[var(--text-secondary)]">
-                              No assignee
-                            </p>
-                          </div>
-                        </button>
+                          <span className="text-[var(--text-secondary)]">
+                            Unassigned
+                          </span>
+                        </>
+                      )}
+                    </button>
 
-                        {filteredMembers.map((member) => {
-                          const isSelected = member.id === assigneeId;
+                    {isAssigneeOpen && (
+                      <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg">
+                        <div className="border-b border-[var(--border)] p-2">
+                          <input
+                            autoFocus
+                            value={assigneeSearch}
+                            onChange={(e) => setAssigneeSearch(e.target.value)}
+                            placeholder="Search member..."
+                            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${classNames.input.bg} ${classNames.input.border} ${classNames.input.text} ${classNames.input.placeholder} ${classNames.input.focus}`}
+                          />
+                        </div>
 
-                          return (
-                            <button
-                              key={member.id}
-                              type="button"
-                              onClick={() => {
-                                setAssigneeId(member.id);
-                                setIsAssigneeOpen(false);
-                                setAssigneeSearch("");
-                              }}
-                              className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
-                            >
-                              <MemberAvatar member={member} size="md" />
+                        <div className="max-h-60 overflow-y-auto py-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAssigneeId("");
+                              setIsAssigneeOpen(false);
+                              setAssigneeSearch("");
+                            }}
+                            className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
+                          >
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--secondary)] text-sm font-semibold text-[var(--text-secondary)]">
+                              —
+                            </div>
 
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate font-medium text-[var(--text-primary)]">
-                                  {member.fullName || member.username}
-                                </p>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-[var(--text-primary)]">
+                                Unassigned
+                              </p>
+                              <p className="truncate text-xs text-[var(--text-secondary)]">
+                                No assignee
+                              </p>
+                            </div>
+                          </button>
 
-                                <p className="truncate text-xs text-[var(--text-secondary)]">
-                                  {member.email}
-                                </p>
-                              </div>
+                          {filteredMembers.map((member) => {
+                            const isSelected = member.id === assigneeId;
 
-                              {isSelected && (
-                                <span className="text-xs font-semibold text-[var(--primary)]">
-                                  Selected
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                key={member.id}
+                                type="button"
+                                onClick={() => {
+                                  setAssigneeId(member.id);
+                                  setIsAssigneeOpen(false);
+                                  setAssigneeSearch("");
+                                }}
+                                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
+                              >
+                                <MemberAvatar member={member} size="md" />
 
-                        {filteredMembers.length === 0 && (
-                          <div className="px-3 py-5 text-center text-sm text-[var(--text-secondary)]">
-                            No members found
-                          </div>
-                        )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium text-[var(--text-primary)]">
+                                    {member.fullName || member.username}
+                                  </p>
+
+                                  <p className="truncate text-xs text-[var(--text-secondary)]">
+                                    {member.email}
+                                  </p>
+                                </div>
+
+                                {isSelected && (
+                                  <span className="text-xs font-semibold text-[var(--primary)]">
+                                    Selected
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+
+                          {filteredMembers.length === 0 && (
+                            <div className="px-3 py-5 text-center text-sm text-[var(--text-secondary)]">
+                              No members found
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </DetailRow>
+                    )}
+                  </div>
+                </DetailRow>
 
-              <DetailRow label="Priority">
-                <select
-                  disabled={disabled}
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                  className={inlineControlClassName}
-                >
-                  {Object.values(TaskPriority).map((val) => (
-                    <option key={val} value={val}>
-                      {val}
-                    </option>
-                  ))}
-                </select>
-              </DetailRow>
+                <DetailRow label="Priority">
+                  <select
+                    disabled={disabled}
+                    value={priority}
+                    onChange={(e) =>
+                      setPriority(e.target.value as TaskPriority)
+                    }
+                    className={inlineControlClassName}
+                  >
+                    {Object.values(TaskPriority).map((val) => (
+                      <option key={val} value={val}>
+                        {val}
+                      </option>
+                    ))}
+                  </select>
+                </DetailRow>
 
-              <DetailRow label="Parent">
-                {task.parentTask?.title ?? "None"}
-              </DetailRow>
+                <DetailRow label="Parent">
+                  {task.parentTask?.title ?? "None"}
+                </DetailRow>
 
-              <DetailRow label="Due date">
-                <input
-                  disabled={disabled}
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className={inlineControlClassName}
-                />
-              </DetailRow>
+                <DetailRow label="Due date">
+                  <input
+                    disabled={disabled}
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className={inlineControlClassName}
+                  />
+                </DetailRow>
 
-              <DetailRow label="Labels">None</DetailRow>
+                <DetailRow label="Labels">None</DetailRow>
 
-              <DetailRow label="Estimate">
-                <input
-                  disabled={disabled}
-                  type="number"
-                  min={0}
-                  value={estimate}
-                  onChange={(e) => setEstimate(e.target.value)}
-                  placeholder="None"
-                  className={`w-24 ${inlineControlClassName}`}
-                />
-              </DetailRow>
+                <DetailRow label="Estimate">
+                  <input
+                    disabled={disabled}
+                    type="number"
+                    min={0}
+                    value={estimate}
+                    onChange={(e) => setEstimate(e.target.value)}
+                    placeholder="None"
+                    className={`w-24 ${inlineControlClassName}`}
+                  />
+                </DetailRow>
 
-              <DetailRow label="Reporter">
-                {task.creator?.fullName ?? "Unknown"}
-              </DetailRow>
+                <DetailRow label="Reporter">
+                  {task.creator?.fullName ?? "Unknown"}
+                </DetailRow>
+              </div>
             </div>
-          </div>
 
-          <Button
-            type="submit"
-            disabled={disabled || !title.trim()}
-            className="w-full"
-          >
-            {isPending ? "Saving..." : "Save changes"}
-          </Button>
-        </aside>
-      </div>
-    </form>
+            <Button
+              type="submit"
+              disabled={disabled || !title.trim()}
+              className="w-full"
+            >
+              {isPending ? "Saving..." : "Save changes"}
+            </Button>
+          </aside>
+        </div>
+      </form>
+    </div>
   );
 }
 
