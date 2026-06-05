@@ -4,7 +4,7 @@
 import { toast, ToastContainer } from "react-toastify";
 import useTasksByProjectSlug from "@/features/tasks/hooks/useTasksByProjectSlug";
 import { Task } from "@/features/tasks/types";
-import { TaskStatus } from "@/shared/types/enums";
+import { TaskPriority, TaskStatus } from "@/shared/types/enums";
 import useCreateTask from "@/features/tasks/hooks/useCreateTask";
 import {
   DndContext,
@@ -17,7 +17,6 @@ import {
 } from "@dnd-kit/core";
 import {
   CalendarDays,
-  Check,
   CircleDot,
   Filter,
   GripVertical,
@@ -32,7 +31,13 @@ import TaskDetailsModal from "./components/TaskDetailsModal";
 import useGetProjectMembers from "@/features/projects/hooks/useGetProjectMembers";
 import { useQueryClient } from "@tanstack/react-query";
 import useUpdateTask from "@/features/tasks/hooks/useUpdateTask";
-import { classNames, taskPriorityColors } from "@/shared/styles/classNames";
+import {
+  classNames,
+  taskPriorityColors,
+  taskStatusConfig,
+} from "@/shared/styles/classNames";
+import Popover from "@/shared/ui/Popover";
+import BoardFilters, { UNASSIGNED_MEMBER_ID } from "./components/BoardFilters";
 
 const columns = [
   { key: TaskStatus.Backlog, title: "Backlog" },
@@ -75,9 +80,10 @@ export default function ProjectBoardPage() {
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
   const [search, setSearch] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [visibleStatuses, setVisibleStatuses] = useState<BoardStatus[]>(
-    columns.map((column) => column.key)
-  );
+  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([...Object.values(TaskStatus)]);
+  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([...Object.values(TaskPriority)]);
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([])
+  const [selectedReporterIds, setSelectedReporterIds] = useState<string[]>([])
 
   const canCreateTask =
     apiTasks?.currentUser.permissions.task.canCreateTask ?? false;
@@ -105,15 +111,39 @@ export default function ProjectBoardPage() {
   const filteredTasks = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    if (!keyword) return boardTasks;
+    const prioritySet = new Set(selectedPriorities);
+    const assigneeSet = new Set(selectedAssigneeIds);
+    const reporterSet = new Set(selectedReporterIds);
 
-    return boardTasks.filter(
-      (task) =>
+    return boardTasks.filter((task) => {
+      const matchesSearch =
+        !keyword ||
         task.title.toLowerCase().includes(keyword) ||
         task.id.toLowerCase().includes(keyword) ||
-        task.assignee?.fullName?.toLowerCase().includes(keyword)
-    );
-  }, [boardTasks, search]);
+        task.assignee?.fullName?.toLowerCase().includes(keyword) ||
+        task.creator?.fullName?.toLowerCase().includes(keyword);
+
+      const matchesAssignee =
+        assigneeSet.has(task.assignee?.id ?? "") ||
+        (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
+
+      const matchesReporter =
+        reporterSet.has(task.creator?.id ?? "")
+
+      return (
+        matchesSearch &&
+        prioritySet.has(task.priority) &&
+        matchesAssignee &&
+        matchesReporter
+      );
+    });
+  }, [
+    boardTasks,
+    search,
+    selectedPriorities,
+    selectedAssigneeIds,
+    selectedReporterIds,
+  ]);
 
   const tasksByStatus = useMemo(() => {
     return columns.reduce<Record<BoardStatus, Task[]>>((acc, column) => {
@@ -126,30 +156,8 @@ export default function ProjectBoardPage() {
   }, [filteredTasks]);
 
   const visibleColumns = useMemo(() => {
-    return columns.filter((column) => visibleStatuses.includes(column.key));
-  }, [visibleStatuses]);
-
-  const toggleStatusVisibility = (status: BoardStatus) => {
-    setVisibleStatuses((current) => {
-      if (current.includes(status)) {
-        return current.filter((item) => item !== status);
-      }
-
-      return [...current, status];
-    });
-  };
-
-  const showAllColumns = () => {
-    setVisibleStatuses(columns.map((column) => column.key));
-  };
-
-  const hideEmptyColumns = () => {
-    const statusesWithTasks = columns
-      .filter((column) => boardTasks.some((task) => task.status === column.key))
-      .map((column) => column.key);
-
-    setVisibleStatuses(statusesWithTasks);
-  };
+    return columns.filter((column) => selectedStatuses.includes(column.key));
+  }, [selectedStatuses]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -165,9 +173,9 @@ export default function ProjectBoardPage() {
       current.map((task) =>
         task.id === taskId
           ? {
-              ...task,
-              status: nextStatus,
-            }
+            ...task,
+            status: nextStatus,
+          }
           : task
       )
     );
@@ -223,6 +231,13 @@ export default function ProjectBoardPage() {
       ),
     });
   };
+
+  useEffect(() => {
+    if (members && members.length > 0) {
+      setSelectedAssigneeIds([...members.map(m => m.id), UNASSIGNED_MEMBER_ID])
+      setSelectedReporterIds(members.map(m => m.id))
+    }
+  }, [members])
 
   useEffect(() => {
     if (selectedTask) {
@@ -288,7 +303,7 @@ export default function ProjectBoardPage() {
 
   return (
     <div className="flex h-full flex-col gap-5 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-sm">
           <Search
             size={16}
@@ -304,80 +319,60 @@ export default function ProjectBoardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <p className="text-sm text-[var(--text-secondary)]">
-            {filteredTasks.length} tasks
-          </p>
-
           <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsFilterOpen((curr) => !curr)}
-              className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--secondary)]"
-            >
-              <Filter size={15} />
-              Filter
-              <span className="rounded-full bg-[var(--secondary)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
-                {visibleStatuses.length}/{columns.length}
-              </span>
-            </button>
+            <Popover
+              position="left"
+              onClose={() => setIsFilterOpen(false)}
+              isOpen={isFilterOpen}
+              content={<BoardFilters
+                members={members || []}
+                selectedPriorities={selectedPriorities}
+                onPriorityClicked={(priority) => {
+                  setSelectedPriorities((curr) =>
+                    curr.includes(priority)
+                      ? curr.filter((item) => item !== priority)
+                      : [...curr, priority]
+                  );
+                }}
+                selectedStatuses={selectedStatuses}
+                onStatusClicked={(status) => {
+                  setSelectedStatuses((curr) =>
+                    curr.includes(status)
+                      ? curr.filter((item) => item !== status)
+                      : [...curr, status]
+                  );
+                }}
 
-            {isFilterOpen && (
-              <div className="absolute right-0 top-11 z-50 w-64 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
-                <p className="px-2 pb-2 text-xs font-semibold text-[var(--text-primary)]">
-                  Columns
-                </p>
+                selectedAssigneeIds={selectedAssigneeIds}
+                onAssigneeClicked={(memberId) => {
+                  setSelectedAssigneeIds((curr) =>
+                    curr.includes(memberId)
+                      ? curr.filter((item) => item !== memberId)
+                      : [...curr, memberId]
+                  );
+                }}
 
-                <div className="space-y-1">
-                  {columns.map((column) => {
-                    const isVisible = visibleStatuses.includes(column.key);
-
-                    return (
-                      <button
-                        key={column.key}
-                        type="button"
-                        onClick={() => toggleStatusVisibility(column.key)}
-                        className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-sm transition hover:bg-[var(--secondary)]"
-                      >
-                        <span className="text-[var(--text-primary)]">
-                          {column.title}
-                        </span>
-
-                        <span className="flex items-center gap-2">
-                          <span className="rounded-full bg-[var(--secondary)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
-                            {tasksByStatus[column.key]?.length ?? 0}
-                          </span>
-
-                          {isVisible && (
-                            <Check
-                              size={14}
-                              className="text-[var(--primary)]"
-                            />
-                          )}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-2 border-t border-[var(--border)] pt-2">
-                  <button
-                    type="button"
-                    onClick={hideEmptyColumns}
-                    className="w-full rounded-lg px-2 py-2 text-left text-sm text-[var(--text-primary)] transition hover:bg-[var(--secondary)]"
-                  >
-                    Hide empty columns
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={showAllColumns}
-                    className="w-full rounded-lg px-2 py-2 text-left text-sm text-[var(--text-primary)] transition hover:bg-[var(--secondary)]"
-                  >
-                    Show all columns
-                  </button>
-                </div>
-              </div>
-            )}
+                selectedReporterIds={selectedReporterIds}
+                onReporterClicked={(memberId) => {
+                  setSelectedReporterIds((curr) =>
+                    curr.includes(memberId)
+                      ? curr.filter((item) => item !== memberId)
+                      : [...curr, memberId]
+                  );
+                }}
+              />}>
+              <button
+                type="button"
+                onClick={() => setIsFilterOpen((curr) => !curr)}
+                className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--secondary)]"
+              >
+                <Filter size={15} />
+                Filter
+                <span className="rounded-full bg-[var(--secondary)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
+                  {selectedStatuses.length}/{columns.length}
+                </span>
+              </button>
+            </Popover>
           </div>
         </div>
       </div>
@@ -483,10 +478,22 @@ function KanbanColumn({
     id,
     disabled: disabled || !canUpdateTaskStatus,
   });
+  const statusStyle = taskStatusConfig[id];
+  const columnStyle: CSSProperties = {
+    borderColor: statusStyle.bg,
+    background: isOver
+      ? `color-mix(in srgb, ${statusStyle.bg} 34%, var(--background))`
+      : `color-mix(in srgb, ${statusStyle.bg} 12%, var(--background))`,
+    boxShadow: isOver
+      ? `0 0 0 3px color-mix(in srgb, ${statusStyle.bg} 72%, transparent), 0 18px 44px color-mix(in srgb, ${statusStyle.bg} 28%, transparent)`
+      : undefined,
+    transform: isOver ? "translateY(-2px)" : undefined,
+  };
 
   return (
     <section
       ref={setNodeRef}
+      style={columnStyle}
       className={`
         w-[320px]
         min-w-[320px]
@@ -495,29 +502,48 @@ function KanbanColumn({
         rounded-2xl
         border
         p-3
+        relative
+        overflow-hidden
         transition
-        ${
-          isOver
-            ? "border-[var(--primary)] bg-[var(--primary)]/10"
-            : "border-[var(--border)] bg-[var(--secondary)]/60"
-        }
+        duration-200
       `}
     >
-      <div className="mb-3 flex items-center justify-between px-1">
+      {isOver && (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-2xl"
+          style={{
+            background: `linear-gradient(135deg, color-mix(in srgb, ${statusStyle.bg} 28%, transparent), transparent 58%)`,
+            boxShadow: `inset 0 0 0 2px ${statusStyle.bg}`,
+          }}
+        />
+      )}
+
+      <div
+        className="relative mb-3 h-1 rounded-full"
+        style={{ background: statusStyle.bg }}
+      />
+
+      <div className="relative mb-3 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <CircleDot size={14} className="text-[var(--primary)]" />
+          <CircleDot size={14} style={{ color: statusStyle.bg }} />
 
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">
             {title}
           </h2>
 
-          <span className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-medium"
+            style={{
+              background: statusStyle.bg,
+              color: statusStyle.text,
+            }}
+          >
             {tasks.length}
           </span>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="relative space-y-3">
         {tasks.map((task) => (
           <TaskCard
             isRefetching={refetchingTaskIds.includes(task.id)}
@@ -533,7 +559,8 @@ function KanbanColumn({
           <button
             type="button"
             onClick={() => onCreateTask(id)}
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--primary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
+            style={{ borderColor: statusStyle.bg }}
           >
             <Plus size={15} />
             Add task
@@ -610,11 +637,10 @@ function TaskCard({
         style={style}
         className={`
         cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs 
-        ${
-          isDragging
+        ${isDragging
             ? "scale-[1.02] opacity-80 shadow-lg"
             : "transition-shadow hover:shadow-sm"
-        }
+          }
       `}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
@@ -631,11 +657,10 @@ function TaskCard({
             {...(canUpdateTaskStatus ? attributes : {})}
             className={`
             rounded-md p-1 transition
-            ${
-              canUpdateTaskStatus
+            ${canUpdateTaskStatus
                 ? "cursor-grab text-[var(--text-secondary)] hover:bg-[var(--secondary)] active:cursor-grabbing"
                 : "cursor-not-allowed text-[var(--text-secondary)]/50"
-            }
+              }
           `}
           >
             <GripVertical size={16} />
@@ -657,7 +682,7 @@ function TaskCard({
 
             <div
               title={task.assignee?.fullName ?? "Unassigned"}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-[var(--on-primary)]"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-bold text-[var(--ink)]"
             >
               {assigneeInitial}
             </div>

@@ -282,15 +282,15 @@ export default function TaskDetailsModal({
         >
           <div className="flex items-center justify-end">
             <button
-              className={`relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-(--border) ${
-                isOpenPopover && `border border-(--btn-primary-bg)`
+              className={`relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-[var(--border)] ${
+                isOpenPopover && `border border-[var(--btn-primary-bg)]`
               }`}
               type="button"
               onClick={() => setOpenPopover((curr) => !curr)}
             >
               <div
                 className={`${
-                  isOpenPopover && `bg-(--btn-primary-bg) opacity-20`
+                  isOpenPopover && `bg-[var(--btn-primary-bg)] opacity-20`
                 } absolute h-full w-full`}
               />
 
@@ -299,7 +299,7 @@ export default function TaskDetailsModal({
 
             <button
               onClick={onClose}
-              className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-(--border)"
+              className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-[var(--border)]"
               type="button"
             >
               <div className="absolute h-full w-full" />
@@ -709,7 +709,7 @@ export default function TaskDetailsModal({
                 <DetailRow label="Parent">
                   {typedTask.parentTask ? (
                     <Link
-                      className="text-(--steel-blue) hover:underline brightness-105"
+                      className="text-[var(--steel-blue)] hover:underline brightness-105"
                       href={`/${workspaceSlug}/projects/${projectSlug}/board?selectedTask=${typedTask.parentTask.id}`}
                     >
                       {typedTask.parentTask.title}

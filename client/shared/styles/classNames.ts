@@ -120,32 +120,32 @@ export const taskStatusConfig: Record<TaskStatus, {
 }> = {
   Backlog: {
     label: "BACKLOG",
-    bg: "#4b556320",
-    text: "#d1d5db",
+    bg: "var(--task-status-backlog-bg)",
+    text: "var(--task-status-backlog-text)",
   },
   Todo: {
     label: "TODO",
-    bg: "#dbeafe",
-    text: "#1e293b",
+    bg: "var(--task-status-todo-bg)",
+    text: "var(--task-status-todo-text)",
   },
   In_Progress: {
     label: "IN PROGRESS",
-    bg: "#bfdbfe",
-    text: "#1e293b",
+    bg: "var(--task-status-in-progress-bg)",
+    text: "var(--task-status-in-progress-text)",
   },
   Review: {
     label: "REVIEW",
-    bg: "#fde68a",
-    text: "#1e293b",
+    bg: "var(--task-status-review-bg)",
+    text: "var(--task-status-review-text)",
   },
   Done: {
     label: "DONE",
-    bg: "#bef264",
-    text: "#1e293b",
+    bg: "var(--task-status-done-bg)",
+    text: "var(--task-status-done-text)",
   },
   Canceled: {
     label: "CANCELED",
-    bg: "#fca5a5",
-    text: "#1e293b",
+    bg: "var(--task-status-canceled-bg)",
+    text: "var(--task-status-canceled-text)",
   },
 };

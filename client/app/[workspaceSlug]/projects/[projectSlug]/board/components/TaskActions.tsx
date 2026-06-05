@@ -5,7 +5,7 @@ type Props = {
     onClickArchive?: () => void;
 }
 
-const itemClassName = "cursor-pointer hover:bg-(--secondary) text-[var(--text-primary)] px-4 py-2 text-[14px]"
+const itemClassName = "cursor-pointer hover:bg-[var(--secondary)] text-[var(--text-primary)] px-4 py-2 text-[14px]"
 
 export default function TaskActions({ onClickDelete, onClickArchive }: Props) {
     return (
