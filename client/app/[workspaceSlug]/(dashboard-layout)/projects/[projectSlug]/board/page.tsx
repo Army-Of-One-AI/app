@@ -8,7 +8,9 @@ import { TaskPriority, TaskStatus } from "@/shared/types/enums";
 import useCreateTask from "@/features/tasks/hooks/useCreateTask";
 import {
   DndContext,
+  DragOverlay,
   type DragEndEvent,
+  type DragStartEvent,
   PointerSensor,
   useDraggable,
   useDroppable,
@@ -21,9 +23,8 @@ import {
   Filter,
   GripVertical,
   Plus,
-  Search,
 } from "lucide-react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import CreateTaskModal from "./components/CreateTaskModal";
 import useModal from "@/shared/hooks/useModal";
@@ -38,6 +39,8 @@ import {
 } from "@/shared/styles/classNames";
 import Popover from "@/shared/ui/Popover";
 import BoardFilters, { UNASSIGNED_MEMBER_ID } from "./components/BoardFilters";
+import useSlugs from "@/shared/hooks/useSlugs";
+import SearchBar from "@/shared/ui/SearchBar";
 
 const columns = [
   { key: TaskStatus.Backlog, title: "Backlog" },
@@ -54,20 +57,21 @@ type BoardColumn = (typeof columns)[number];
 export default function ProjectBoardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const params = useParams();
   const searchParams = useSearchParams();
   const selectedTask = searchParams.get("selectedTask");
 
   const [refetchingTaskIds, setRefetchingTaskIds] = useState<string[]>([]);
 
-  const workspaceSlug = params.workspaceSlug as string;
-  const projectSlug = params.projectSlug as string;
+  const slugs = useSlugs();
+  const workspaceSlug = slugs.workspace.slug;
+  const projectSlug = slugs.project.slug;
 
   const { data: members } = useGetProjectMembers(projectSlug, workspaceSlug);
   const { openModal, closeModal, isOpen: isOpenModal } = useModal();
 
   const {
     data: apiTasks,
+    refetch: refechTasks,
     isLoading,
     isFetching,
     error,
@@ -80,10 +84,15 @@ export default function ProjectBoardPage() {
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
   const [search, setSearch] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([...Object.values(TaskStatus)]);
-  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([...Object.values(TaskPriority)]);
-  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([])
-  const [selectedReporterIds, setSelectedReporterIds] = useState<string[]>([])
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([
+    ...Object.values(TaskStatus),
+  ]);
+  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([
+    ...Object.values(TaskPriority),
+  ]);
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+  const [selectedReporterIds, setSelectedReporterIds] = useState<string[]>([]);
 
   const canCreateTask =
     apiTasks?.currentUser.permissions.task.canCreateTask ?? false;
@@ -127,8 +136,7 @@ export default function ProjectBoardPage() {
         assigneeSet.has(task.assignee?.id ?? "") ||
         (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
 
-      const matchesReporter =
-        reporterSet.has(task.creator?.id ?? "")
+      const matchesReporter = reporterSet.has(task.creator?.id ?? "");
 
       return (
         matchesSearch &&
@@ -159,7 +167,18 @@ export default function ProjectBoardPage() {
     return columns.filter((column) => selectedStatuses.includes(column.key));
   }, [selectedStatuses]);
 
+  const activeTask = useMemo(() => {
+    if (!activeTaskId) return null;
+    return boardTasks.find((task) => task.id === activeTaskId) ?? null;
+  }, [activeTaskId, boardTasks]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveTaskId(String(event.active.id));
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTaskId(null);
+
     const { active, over } = event;
 
     if (!over) return;
@@ -173,9 +192,9 @@ export default function ProjectBoardPage() {
       current.map((task) =>
         task.id === taskId
           ? {
-            ...task,
-            status: nextStatus,
-          }
+              ...task,
+              status: nextStatus,
+            }
           : task
       )
     );
@@ -219,12 +238,11 @@ export default function ProjectBoardPage() {
         <CreateTaskModal
           defaultStatus={status}
           isLoading={createTaskMutation.isPending}
+          key={createTaskMutation.isPending + ""}
           onClose={closeModal}
           onCreate={async (values) => {
-            const newTask = await createTaskMutation.mutateAsync(values);
-
-            setBoardTasks((curr) => [...curr, newTask]);
-
+            await createTaskMutation.mutateAsync(values);
+            await refechTasks();
             closeModal();
           }}
         />
@@ -234,10 +252,13 @@ export default function ProjectBoardPage() {
 
   useEffect(() => {
     if (members && members.length > 0) {
-      setSelectedAssigneeIds([...members.map(m => m.id), UNASSIGNED_MEMBER_ID])
-      setSelectedReporterIds(members.map(m => m.id))
+      setSelectedAssigneeIds([
+        ...members.map((m) => m.id),
+        UNASSIGNED_MEMBER_ID,
+      ]);
+      setSelectedReporterIds(members.map((m) => m.id));
     }
-  }, [members])
+  }, [members]);
 
   useEffect(() => {
     if (selectedTask) {
@@ -304,19 +325,12 @@ export default function ProjectBoardPage() {
   return (
     <div className="flex h-full flex-col gap-5 py-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-sm">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
-          />
-
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks..."
-            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-3 text-sm text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-secondary)] focus:border-[var(--primary)]"
-          />
-        </div>
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search tasks..."
+          className="max-w-sm"
+        />
 
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -324,43 +338,44 @@ export default function ProjectBoardPage() {
               position="left"
               onClose={() => setIsFilterOpen(false)}
               isOpen={isFilterOpen}
-              content={<BoardFilters
-                members={members || []}
-                selectedPriorities={selectedPriorities}
-                onPriorityClicked={(priority) => {
-                  setSelectedPriorities((curr) =>
-                    curr.includes(priority)
-                      ? curr.filter((item) => item !== priority)
-                      : [...curr, priority]
-                  );
-                }}
-                selectedStatuses={selectedStatuses}
-                onStatusClicked={(status) => {
-                  setSelectedStatuses((curr) =>
-                    curr.includes(status)
-                      ? curr.filter((item) => item !== status)
-                      : [...curr, status]
-                  );
-                }}
-
-                selectedAssigneeIds={selectedAssigneeIds}
-                onAssigneeClicked={(memberId) => {
-                  setSelectedAssigneeIds((curr) =>
-                    curr.includes(memberId)
-                      ? curr.filter((item) => item !== memberId)
-                      : [...curr, memberId]
-                  );
-                }}
-
-                selectedReporterIds={selectedReporterIds}
-                onReporterClicked={(memberId) => {
-                  setSelectedReporterIds((curr) =>
-                    curr.includes(memberId)
-                      ? curr.filter((item) => item !== memberId)
-                      : [...curr, memberId]
-                  );
-                }}
-              />}>
+              content={
+                <BoardFilters
+                  members={members || []}
+                  selectedPriorities={selectedPriorities}
+                  onPriorityClicked={(priority) => {
+                    setSelectedPriorities((curr) =>
+                      curr.includes(priority)
+                        ? curr.filter((item) => item !== priority)
+                        : [...curr, priority]
+                    );
+                  }}
+                  selectedStatuses={selectedStatuses}
+                  onStatusClicked={(status) => {
+                    setSelectedStatuses((curr) =>
+                      curr.includes(status)
+                        ? curr.filter((item) => item !== status)
+                        : [...curr, status]
+                    );
+                  }}
+                  selectedAssigneeIds={selectedAssigneeIds}
+                  onAssigneeClicked={(memberId) => {
+                    setSelectedAssigneeIds((curr) =>
+                      curr.includes(memberId)
+                        ? curr.filter((item) => item !== memberId)
+                        : [...curr, memberId]
+                    );
+                  }}
+                  selectedReporterIds={selectedReporterIds}
+                  onReporterClicked={(memberId) => {
+                    setSelectedReporterIds((curr) =>
+                      curr.includes(memberId)
+                        ? curr.filter((item) => item !== memberId)
+                        : [...curr, memberId]
+                    );
+                  }}
+                />
+              }
+            >
               <button
                 type="button"
                 onClick={() => setIsFilterOpen((curr) => !curr)}
@@ -384,7 +399,9 @@ export default function ProjectBoardPage() {
       ) : mounted ? (
         <DndContext
           sensors={sensors}
+          onDragStart={canUpdateTaskStatus ? handleDragStart : undefined}
           onDragEnd={canUpdateTaskStatus ? handleDragEnd : undefined}
+          onDragCancel={() => setActiveTaskId(null)}
         >
           <BoardColumns
             refetchingTaskIds={refetchingTaskIds}
@@ -395,6 +412,9 @@ export default function ProjectBoardPage() {
             onCreateTask={handleOpenCreateTaskModal}
             onOpenTaskDetails={handleOpenTaskDetails}
           />
+          <DragOverlay zIndex={10000}>
+            {activeTask ? <TaskCardPreview task={activeTask} /> : null}
+          </DragOverlay>
         </DndContext>
       ) : (
         <BoardColumns
@@ -487,7 +507,6 @@ function KanbanColumn({
     boxShadow: isOver
       ? `0 0 0 3px color-mix(in srgb, ${statusStyle.bg} 72%, transparent), 0 18px 44px color-mix(in srgb, ${statusStyle.bg} 28%, transparent)`
       : undefined,
-    transform: isOver ? "translateY(-2px)" : undefined,
   };
 
   return (
@@ -503,7 +522,7 @@ function KanbanColumn({
         border
         p-3
         relative
-        overflow-hidden
+        overflow-y-auto
         transition
         duration-200
       `}
@@ -544,6 +563,20 @@ function KanbanColumn({
       </div>
 
       <div className="relative space-y-3">
+        {" "}
+        {canCreateTask && (
+          <button
+            type="button"
+            onClick={() => onCreateTask(id)}
+            className="sticky top-0  flex h-10 w-full items-center justify-center cursor-pointer
+            shadow-lg gap-2 rounded-xl border border-dashed  bg-(--background) z-100
+            border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
+            style={{ borderColor: statusStyle.bg }}
+          >
+            <Plus size={15} />
+            Add task
+          </button>
+        )}
         {tasks.map((task) => (
           <TaskCard
             isRefetching={refetchingTaskIds.includes(task.id)}
@@ -554,18 +587,6 @@ function KanbanColumn({
             onOpenTaskDetails={onOpenTaskDetails}
           />
         ))}
-
-        {canCreateTask && (
-          <button
-            type="button"
-            onClick={() => onCreateTask(id)}
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
-            style={{ borderColor: statusStyle.bg }}
-          >
-            <Plus size={15} />
-            Add task
-          </button>
-        )}
       </div>
     </section>
   );
@@ -584,18 +605,13 @@ function TaskCard({
   isRefetching: boolean;
   onOpenTaskDetails: (taskId: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-      disabled,
-    });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: task.id,
+    disabled,
+  });
 
   const style: CSSProperties = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
-    zIndex: isDragging ? 50 : undefined,
-    position: isDragging ? "relative" : undefined,
+    opacity: isDragging ? 0.35 : undefined,
   };
 
   const assigneeInitial =
@@ -615,7 +631,7 @@ function TaskCard({
   };
 
   return (
-    <div className="relative rounded-xl">
+    <div className={`relative rounded-xl ${isDragging ? "z-50" : "z-0"}`}>
       {isRefetching && (
         <div className="absolute inset-0 z-50 flex items-center justify-center rounded-xl bg-[var(--surface)]/55 backdrop-blur-[2px]">
           <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] shadow-sm">
@@ -637,10 +653,11 @@ function TaskCard({
         style={style}
         className={`
         cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs 
-        ${isDragging
+        ${
+          isDragging
             ? "scale-[1.02] opacity-80 shadow-lg"
             : "transition-shadow hover:shadow-sm"
-          }
+        }
       `}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
@@ -657,10 +674,11 @@ function TaskCard({
             {...(canUpdateTaskStatus ? attributes : {})}
             className={`
             rounded-md p-1 transition
-            ${canUpdateTaskStatus
+            ${
+              canUpdateTaskStatus
                 ? "cursor-grab text-[var(--text-secondary)] hover:bg-[var(--secondary)] active:cursor-grabbing"
                 : "cursor-not-allowed text-[var(--text-secondary)]/50"
-              }
+            }
           `}
           >
             <GripVertical size={16} />
@@ -690,6 +708,54 @@ function TaskCard({
         </div>
       </article>
     </div>
+  );
+}
+
+function TaskCardPreview({ task }: { task: Task }) {
+  const assigneeInitial =
+    task.assignee?.fullName
+      ?.split(" ")
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "?";
+
+  return (
+    <article className="w-[296px] cursor-grabbing rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 opacity-95 shadow-2xl">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
+            {task.title}
+          </h3>
+        </div>
+
+        <div className="rounded-md p-1 text-[var(--text-secondary)]">
+          <GripVertical size={16} />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+          {task.dueDate && (
+            <>
+              <CalendarDays size={14} />
+              <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <PriorityBadge priority={task.priority} />
+
+          <div
+            title={task.assignee?.fullName ?? "Unassigned"}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-bold text-[var(--ink)]"
+          >
+            {assigneeInitial}
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 

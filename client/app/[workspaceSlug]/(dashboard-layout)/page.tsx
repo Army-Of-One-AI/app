@@ -1,12 +1,12 @@
 'use client'
 
 import useWorkspaceDetailsBySlug from "@/features/workspaces/hooks/useWorkspaceDetailsBySlug";
+import useSlugs from "@/shared/hooks/useSlugs";
 import PageContent from "@/shared/ui/DashboardLayout/PageContent";
-import { useParams } from "next/navigation";
 
 export default function WorkspacePage() {
-  const params = useParams();
-  const slug = params.workspaceSlug as string;
+  const { workspace } = useSlugs();
+  const slug = workspace.slug;
   const {} = useWorkspaceDetailsBySlug(slug);
 
   return (

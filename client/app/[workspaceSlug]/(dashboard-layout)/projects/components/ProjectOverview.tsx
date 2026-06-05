@@ -1,8 +1,9 @@
 import { Project } from "@/features/projects/types";
 import { classNames, projectStatusColors } from "@/shared/styles/classNames";
+import useSlugs from "@/shared/hooks/useSlugs";
 import Button from "@/shared/ui/Button";
 import { parseRichText } from "@/shared/utils/helpers";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const sectionClassName = `border-b ${classNames.border} p-6`;
 const sectionTitleClassName = `mb-4 text-sm font-semibold uppercase tracking-wide ${classNames.text.secondary}`;
@@ -13,8 +14,8 @@ export default function ProjectOverview({
   project: Project | null | undefined;
 }) {
   const router = useRouter();
-  const params = useParams();
-  const workspaceSlug = params.workspaceSlug as string;
+  const { workspace } = useSlugs();
+  const workspaceSlug = workspace.slug;
 
   if (!project) return null;
 

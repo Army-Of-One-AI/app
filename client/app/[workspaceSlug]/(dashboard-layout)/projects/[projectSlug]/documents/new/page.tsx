@@ -5,16 +5,17 @@ import RichTextEditor from "@/shared/ui/RichTextEditor";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, FileText, Save } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
+import useSlugs from "@/shared/hooks/useSlugs";
 
 export default function NewDocument() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const params = useParams();
-  const workspaceSlug = params.workspaceSlug as string;
-  const projectSlug = params.projectSlug as string;
+  const { workspace, project } = useSlugs();
+  const workspaceSlug = workspace.slug;
+  const projectSlug = project.slug;
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState({

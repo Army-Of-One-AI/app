@@ -110,14 +110,18 @@ export const taskPriorityColors = {
 
   High: "bg-[var(--priority-high-bg)] text-[var(--priority-high-text)]",
 
-  Urgent: "bg-[var(--priority-critical-bg)] text-[var(--priority-critical-text)]",
+  Urgent:
+    "bg-[var(--priority-critical-bg)] text-[var(--priority-critical-text)]",
 } as const;
 
-export const taskStatusConfig: Record<TaskStatus, {
-  label: string;
-  bg: string;
-  text: string;
-}> = {
+export const taskStatusConfig: Record<
+  TaskStatus,
+  {
+    label: string;
+    bg: string;
+    text: string;
+  }
+> = {
   Backlog: {
     label: "BACKLOG",
     bg: "var(--task-status-backlog-bg)",

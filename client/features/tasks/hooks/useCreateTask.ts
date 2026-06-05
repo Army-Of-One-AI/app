@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createTask } from "../api/createTask";
-import { CreateTaskFormValues } from "@/app/[workspaceSlug]/projects/[projectSlug]/board/components/CreateTaskModal";
+import { CreateTaskFormValues } from "@/app/[workspaceSlug]/(dashboard-layout)/projects/[projectSlug]/board/components/CreateTaskModal";
 
 export default function useCreateTask(
   workspaceSlug: string,

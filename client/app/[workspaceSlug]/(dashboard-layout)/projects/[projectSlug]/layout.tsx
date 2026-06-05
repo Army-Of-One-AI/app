@@ -3,9 +3,10 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { useParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import PageContent from "@/shared/ui/DashboardLayout/PageContent";
+import useSlugs from "@/shared/hooks/useSlugs";
 
 const projectNavItems = [
   {
@@ -25,9 +26,9 @@ const projectNavItems = [
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  const params = useParams();
-  const projectSlug = params.projectSlug as string;
-  const workspaceSlug = params.workspaceSlug as string;
+  const { workspace, project } = useSlugs();
+  const workspaceSlug = workspace.slug;
+  const projectSlug = project.slug;
 
   const projectBaseUrl = `/${workspaceSlug}/projects/${projectSlug}`;
 
@@ -112,7 +113,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       </div>
     );
-  }, [pathname, projectSlug, projectBaseUrl]);
+  }, [pathname, workspaceSlug, projectSlug, projectBaseUrl]);
 
   return (
     <PageContent title="Project Details" customHeader={customHeader}>

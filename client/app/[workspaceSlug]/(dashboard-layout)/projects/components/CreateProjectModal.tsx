@@ -67,7 +67,7 @@ export default function CreateProjectModal({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-125 max-w-[100vw] space-y-4">
+    <form onSubmit={handleSubmit} className={`w-125 max-w-[100vw] space-y-4`}>
       <div>
         <label className={labelClassName}>Project name</label>
         <input

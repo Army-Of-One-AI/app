@@ -7,14 +7,14 @@ import {
   ChevronRight,
   FileText,
   Plus,
-  Search,
 } from "lucide-react";
 import { DateTime } from "luxon";
-import { useParams } from "next/navigation";
 
 import useProjectDocuments from "@/features/documents/hooks/useProjectDocuments";
 import DataTable from "@/shared/ui/Table";
 import useGetProjectMembers from "@/features/projects/hooks/useGetProjectMembers";
+import useSlugs from "@/shared/hooks/useSlugs";
+import SearchBar from "@/shared/ui/SearchBar";
 
 const filterControlClass =
   "h-9 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] " +
@@ -31,9 +31,9 @@ const SEARCH_MIN_LENGTH = 3;
 const SEARCH_DEBOUNCE_MS = 500;
 
 export default function DocumentsPage() {
-  const params = useParams();
-  const workspaceSlug = params.workspaceSlug as string;
-  const projectSlug = params.projectSlug as string;
+  const { workspace, project } = useSlugs();
+  const workspaceSlug = workspace.slug;
+  const projectSlug = project.slug;
 
   const { data: members } = useGetProjectMembers(projectSlug, workspaceSlug);
 
@@ -117,18 +117,11 @@ export default function DocumentsPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-2">
         <div className="min-w-[260px] flex-1">
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
-            />
-            <input
-              value={searchText}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search documents..."
-              className={`w-full pl-10 ${filterControlClass}`}
-            />
-          </div>
+          <SearchBar
+            value={searchText}
+            onChange={handleSearchChange}
+            placeholder="Search documents..."
+          />
 
           {searchText.trim().length > 0 &&
             searchText.trim().length < SEARCH_MIN_LENGTH && (

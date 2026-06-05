@@ -69,8 +69,6 @@ export default function CreateTaskModal({
       ...(dueDate && { dueDate }),
       ...(estimate && { estimate: Number(estimate) }),
     });
-
-    onClose();
   };
 
   return (

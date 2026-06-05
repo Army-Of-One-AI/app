@@ -2,27 +2,28 @@
 
 :root {
   /* Palette */
-  --palette-beige: #f2eae0;
-  --palette-bluegray: #b4d3d9;
-  --palette-lavender: #bda6ce;
-  --palette-purple: #9b8ec7;
+  --palette-navy: #0a2463;
+  --palette-blue: #3e92cc;
+  --palette-paper: #fffaff;
+  --palette-rose: #d8315b;
+  --palette-ink: #1e1b18;
 
-  --ink: #17151f;
-  --graphite: #211d2b;
-  --charcoal: #2d2738;
-  --slate-line: #443b52;
-  --paper: var(--palette-beige);
-  --smoke: #d5ccda;
-  --sage: var(--palette-purple);
-  --sage-deep: #8678b5;
-  --copper: var(--palette-bluegray);
-  --rosewood: var(--palette-lavender);
-  --steel-blue: var(--palette-bluegray);
-  --plum: var(--palette-lavender);
+  --ink: #161616;
+  --graphite: #1f1f20;
+  --charcoal: #29292b;
+  --slate-line: rgba(73, 72, 72, 0.38);
+  --paper: var(--palette-paper);
+  --smoke: #d6d2d6;
+  --sage: var(--palette-blue);
+  --sage-deep: #2f78ab;
+  --copper: var(--palette-navy);
+  --rosewood: var(--palette-rose);
+  --steel-blue: var(--palette-blue);
+  --plum: var(--palette-rose);
 
   /* Brand */
   --primary: var(--sage);
-  --on-primary: var(--paper);
+  --on-primary: var(--palette-paper);
   --accent: var(--copper);
 
   /* Layout */
@@ -43,66 +44,66 @@
   --btn-primary-color: var(--on-primary);
 
   --btn-secondary-bg: var(--surface);
-  --btn-secondary-bg-hover: rgb(180 211 217 / 12%);
+  --btn-secondary-bg-hover: rgb(62 146 204 / 28%);
   --btn-secondary-color: var(--paper);
   --btn-secondary-border: var(--border);
 
   /* Semantic */
-  --success: rgb(180 211 217 / 22%);
-  --danger-bg: rgb(189 166 206 / 16%);
-  --danger-border: rgb(189 166 206 / 44%);
-  --danger-text: #e5d2f0;
+  --success: rgb(62 146 204 / 20%);
+  --danger-bg: rgb(216 49 91 / 16%);
+  --danger-border: rgb(216 49 91 / 48%);
+  --danger-text: #f089a1;
   --danger: var(--rosewood);
-  --focus-danger: rgb(189 166 206 / 24%);
-  --skeleton: rgb(242 234 224 / 12%);
+  --focus-danger: rgb(216 49 91 / 24%);
+  --skeleton: rgb(255 250 255 / 12%);
 
   /* Project & Task Status */
-  --status-planning-bg: rgb(155 142 199 / 24%);
-  --status-planning-text: #d9cff7;
+  --status-planning-bg: rgb(10 36 99 / 30%);
+  --status-planning-text: #9db7f1;
 
-  --status-active-bg: rgb(180 211 217 / 22%);
-  --status-active-text: #d8f0f4;
+  --status-active-bg: rgb(62 146 204 / 22%);
+  --status-active-text: #a9d8f8;
 
-  --status-onhold-bg: rgb(189 166 206 / 18%);
-  --status-onhold-text: #e5d2f0;
+  --status-onhold-bg: rgb(216 49 91 / 18%);
+  --status-onhold-text: #f089a1;
 
-  --status-completed-bg: rgb(242 234 224 / 16%);
-  --status-completed-text: #f2eae0;
+  --status-completed-bg: rgb(255 250 255 / 14%);
+  --status-completed-text: var(--paper);
 
-  --status-archived-bg: rgb(242 234 224 / 10%);
+  --status-archived-bg: rgb(255 250 255 / 10%);
   --status-archived-text: var(--smoke);
 
-  --task-status-backlog-bg: rgb(242 234 224 / 12%);
+  --task-status-backlog-bg: rgb(255 250 255 / 12%);
   --task-status-backlog-text: var(--smoke);
 
-  --task-status-todo-bg: var(--palette-purple);
-  --task-status-todo-text: var(--paper);
+  --task-status-todo-bg: #3b6fd0;
+  --task-status-todo-text: #ffffff;
 
-  --task-status-in-progress-bg: var(--palette-bluegray);
-  --task-status-in-progress-text: var(--ink);
+  --task-status-in-progress-bg: var(--palette-blue);
+  --task-status-in-progress-text: #ffffff;
 
-  --task-status-review-bg: var(--palette-lavender);
-  --task-status-review-text: var(--ink);
+  --task-status-review-bg: var(--palette-paper);
+  --task-status-review-text: var(--palette-ink);
 
-  --task-status-done-bg: var(--palette-beige);
-  --task-status-done-accent: var(--palette-beige);
-  --task-status-done-text: var(--ink);
+  --task-status-done-bg: var(--palette-rose);
+  --task-status-done-accent: var(--palette-rose);
+  --task-status-done-text: #ffffff;
 
-  --task-status-canceled-bg: rgb(189 166 206 / 18%);
-  --task-status-canceled-text: #e5d2f0;
+  --task-status-canceled-bg: rgb(216 49 91 / 18%);
+  --task-status-canceled-text: #f089a1;
 
   /* Task Priority */
-  --priority-low-bg: rgb(180 211 217 / 22%);
-  --priority-low-text: #d8f0f4;
+  --priority-low-bg: rgb(62 146 204 / 22%);
+  --priority-low-text: #a9d8f8;
 
-  --priority-medium-bg: rgb(155 142 199 / 24%);
-  --priority-medium-text: #d9cff7;
+  --priority-medium-bg: rgb(10 36 99 / 32%);
+  --priority-medium-text: #9db7f1;
 
-  --priority-high-bg: rgb(189 166 206 / 18%);
-  --priority-high-text: #e5d2f0;
+  --priority-high-bg: rgb(216 49 91 / 18%);
+  --priority-high-text: #f089a1;
 
-  --priority-critical-bg: var(--rosewood);
-  --priority-critical-text: var(--ink);
+  --priority-critical-bg: var(--palette-rose);
+  --priority-critical-text: #ffffff;
 
   /* Third-party brand assets */
   --google-yellow: #ffc107;
@@ -112,63 +113,63 @@
 }
 
 :root[data-theme="light"] {
-  --background: #fbf7f1;
+  --background: #ffffff;
   --surface: #ffffff;
-  --secondary: #f4eef7;
-  --border: #e5dcec;
-  --overlay: rgb(23 21 31 / 30%);
-  --shadow-soft: 0 10px 30px rgb(155 142 199 / 16%);
+  --secondary: #eeeeee;
+  --border: #d2d2d2;
+  --overlay: rgb(30 27 24 / 30%);
+  --shadow-soft: 0 10px 30px rgb(30 27 24 / 12%);
 
-  --text-primary: #17151f;
-  --text-secondary: #6d6475;
-  --on-primary: #ffffff;
+  --text-primary: var(--palette-ink);
+  --text-secondary: #635c56;
+  --on-primary: var(--palette-paper);
 
-  --btn-primary-bg: var(--sage);
-  --btn-primary-bg-hover: var(--sage-deep);
-  --btn-primary-color: #ffffff;
+  --btn-primary-bg: var(--palette-blue);
+  --btn-primary-bg-hover: #2f78ab;
+  --btn-primary-color: var(--palette-paper);
 
   --btn-secondary-bg: var(--surface);
-  --btn-secondary-bg-hover: #f0eaf5;
-  --btn-secondary-color: #17151f;
+  --btn-secondary-bg-hover: #f5f5f5;
+  --btn-secondary-color: var(--palette-ink);
   --btn-secondary-border: var(--border);
 
-  --success: rgb(180 211 217 / 36%);
-  --danger-bg: rgb(189 166 206 / 32%);
-  --danger-border: rgb(189 166 206 / 58%);
-  --danger-text: #715186;
+  --success: rgb(62 146 204 / 20%);
+  --danger-bg: rgb(216 49 91 / 14%);
+  --danger-border: rgb(216 49 91 / 38%);
+  --danger-text: #9e203d;
   --danger: var(--rosewood);
-  --focus-danger: rgb(189 166 206 / 30%);
-  --skeleton: rgb(23 21 31 / 8%);
+  --focus-danger: rgb(216 49 91 / 22%);
+  --skeleton: rgb(30 27 24 / 8%);
 
-  --status-planning-bg: rgb(155 142 199 / 24%);
-  --status-planning-text: #594d8a;
+  --status-planning-bg: rgb(10 36 99 / 14%);
+  --status-planning-text: #0a2463;
 
-  --status-active-bg: rgb(180 211 217 / 38%);
-  --status-active-text: #4c7781;
+  --status-active-bg: rgb(62 146 204 / 20%);
+  --status-active-text: #1f668f;
 
-  --status-onhold-bg: rgb(189 166 206 / 34%);
-  --status-onhold-text: #715186;
+  --status-onhold-bg: rgb(216 49 91 / 14%);
+  --status-onhold-text: #9e203d;
 
-  --status-completed-bg: rgb(242 234 224 / 100%);
-  --status-completed-text: #796b5f;
+  --status-completed-bg: rgb(255 250 255 / 100%);
+  --status-completed-text: #635c56;
 
-  --status-archived-bg: rgb(23 21 31 / 8%);
-  --status-archived-text: #6d6475;
+  --status-archived-bg: rgb(30 27 24 / 8%);
+  --status-archived-text: #635c56;
 
-  --task-status-backlog-bg: rgb(23 21 31 / 8%);
-  --task-status-backlog-text: #6d6475;
+  --task-status-backlog-bg: rgb(30 27 24 / 8%);
+  --task-status-backlog-text: #635c56;
 
-  --priority-low-bg: rgb(180 211 217 / 38%);
-  --priority-low-text: #4c7781;
+  --priority-low-bg: rgb(62 146 204 / 20%);
+  --priority-low-text: #1f668f;
 
-  --priority-medium-bg: rgb(155 142 199 / 24%);
-  --priority-medium-text: #594d8a;
+  --priority-medium-bg: rgb(10 36 99 / 14%);
+  --priority-medium-text: #0a2463;
 
-  --priority-high-bg: rgb(189 166 206 / 34%);
-  --priority-high-text: #715186;
+  --priority-high-bg: rgb(216 49 91 / 14%);
+  --priority-high-text: #9e203d;
 
-  --priority-critical-bg: var(--rosewood);
-  --priority-critical-text: #17151f;
+  --priority-critical-bg: var(--palette-rose);
+  --priority-critical-text: #ffffff;
 }
 
 @theme inline {

@@ -1,7 +1,7 @@
 "use client";
 
-import { Plus, Search } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { classNames, projectStatusColors } from "@/shared/styles/classNames";
@@ -22,12 +22,14 @@ import DataTable from "@/shared/ui/Table";
 import Drawer, { DrawerDirection } from "@/shared/ui/Drawer";
 import { useMediaQuery } from "usehooks-ts";
 import ProjectOverview from "./components/ProjectOverview";
+import useSlugs from "@/shared/hooks/useSlugs";
+import SearchBar from "@/shared/ui/SearchBar";
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const params = useParams<{ workspaceSlug: string }>();
   const matches = useMediaQuery("(min-width: 768px)");
-  const workspaceSlug = params.workspaceSlug;
+  const { workspace } = useSlugs();
+  const workspaceSlug = workspace.slug;
 
   const queryClient = useQueryClient();
   const { openModal, closeModal } = useModal();
@@ -95,7 +97,7 @@ export default function ProjectsPage() {
     <PageContent
       title="Projects"
       customHeader={
-        <div className="flex w-full flex-col gap-4">
+        <div className="flex w-full flex-col gap-4 px-2">
           <div className="flex w-full items-center justify-between gap-4">
             <div className="flex items-center gap-2 overflow-x-auto">
               <FilterPill active={status === ""} onClick={() => setStatus("")}>
@@ -122,22 +124,12 @@ export default function ProjectsPage() {
             </Button>
           </div>
 
-          <div
-            className={`
-              flex h-10 max-w-md items-center gap-2 rounded-lg border px-3
-              ${classNames.card.bg}
-              ${classNames.border}
-            `}
-          >
-            <Search size={16} className={classNames.text.secondary} />
-
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search projects..."
-              className="h-full flex-1 bg-transparent text-sm outline-none"
-            />
-          </div>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search projects..."
+            className="max-w-md"
+          />
         </div>
       }
     >

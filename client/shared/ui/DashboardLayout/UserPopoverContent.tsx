@@ -4,17 +4,18 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronRight } from "lucide-react";
 import { classNames } from "@/shared/styles/classNames";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { GetCurrentUserInfoResponse } from "@/features/auth/types";
 import Link from "next/link";
 import useLogout from "@/features/auth/hooks/useLogout";
+import useSlugs from "@/shared/hooks/useSlugs";
 
 const itemClass = `
   flex py-2 w-full items-center justify-between
-  rounded-md px-2 text-[14px]
-  cursor-pointer
+  px-2 text-[14px]
+  cursor-pointer rounded-lg
   ${classNames.text.primary} 
-  ${classNames.background}
+  ${classNames.surface} hover:bg-(--secondary)
   hover:brightness-95 transition-all
 `;
 
@@ -23,15 +24,18 @@ export default function UserPopoverContent({
 }: {
   userInfo?: GetCurrentUserInfoResponse;
 }) {
+  const { workspace } = useSlugs();
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const { mutate: logout } = useLogout();
   const router = useRouter();
 
   return (
-    <div className="w-64 p-2">
-      <button type="button" className={itemClass}>
+    <div
+      className={`w-64 p-2 ${classNames.surface} rounded-lg shadow-lg border ${classNames.border}`}
+    >
+      <Link href={`/${workspace.slug}/settings/profile`} className={itemClass}>
         Settings
-      </button>
+      </Link>
 
       <button type="button" className={itemClass}>
         Invite and manage members
@@ -63,9 +67,8 @@ export default function UserPopoverContent({
               exit={{ opacity: 0, x: -4 }}
               transition={{ duration: 0.1 }}
               className={`absolute left-full top-0 z-[1000] ml-1
-                            w-72 rounded-xl border p-1.5 shadow-xl
-                            ${classNames.background}
-                            ${classNames.border}
+                            w-72 rounded-xl p-1.5 shadow-xl
+                            ${classNames.surface}
               `}
             >
               <WorkspaceSubmenu userInfo={userInfo} />
@@ -96,11 +99,13 @@ function WorkspaceSubmenu({
 }: {
   userInfo?: GetCurrentUserInfoResponse;
 }) {
-  const params = useParams();
-  const slug = params.workspaceSlug as string;
+  const { workspace } = useSlugs();
+  const slug = workspace.slug;
 
   return (
-    <div className="w-full space-y-0.5">
+    <div
+      className={`w-full space-y-0.5 border ${classNames.border} py-4 px-2 rounded-md`}
+    >
       <p className={`px-2 pb-1 text-[12px] ${classNames.text.secondary}`}>
         {userInfo?.email}
       </p>
@@ -149,17 +154,17 @@ function WorkspaceItem({
             rounded-md px-2 text-[12px]
             cursor-pointer
             ${classNames.text.primary} 
-            ${classNames.background}
-            hover:brightness-95 transition-all
+            ${classNames.surface}
+            hover:bg-(--secondary) transition-all
         `}
     >
       <div
         className={`
           flex h-6 w-6 shrink-0 items-center justify-center
-          rounded-full text-[10px] font-semibold
+          rounded-full text-md font-semibold
           ${classNames.primary.bg}
-          ${classNames.primary.text}
-            ${classNames.background}
+          ${classNames.secondary.text}
+          ${classNames.skeleton}
           hover:brightness-95 transition-all
         `}
       >

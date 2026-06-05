@@ -3,7 +3,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { TaskActivityItem, Task, TaskDetails } from "@/features/tasks/types";
 import { TaskActivity, TaskPriority, TaskStatus } from "@/shared/types/enums";
@@ -23,6 +22,8 @@ import TaskVerifyModal from "./TaskVerifyModal";
 import useArchiveTask from "@/features/tasks/hooks/useArchiveTask";
 import Link from "next/link";
 import useTaskActivities from "@/features/tasks/hooks/useTaskActivities";
+import useSlugs from "@/shared/hooks/useSlugs";
+import SearchBar from "@/shared/ui/SearchBar";
 
 type Props = {
   taskId: string;
@@ -56,11 +57,11 @@ export default function TaskDetailsModal({
   onUpdate,
   onClickSubtask,
 }: Props) {
-  const params = useParams();
   const queryClient = useQueryClient();
 
-  const workspaceSlug = params.workspaceSlug as string;
-  const projectSlug = params.projectSlug as string;
+  const slugs = useSlugs();
+  const workspaceSlug = slugs.workspace.slug;
+  const projectSlug = slugs.project.slug;
 
   const {
     data: task,
@@ -261,7 +262,7 @@ export default function TaskDetailsModal({
   }
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={`flex w-full flex-col ${classNames.background}`}>
       <div className="flex w-full items-center justify-end px-4">
         <Popover
           position="right"
@@ -533,7 +534,7 @@ export default function TaskDetailsModal({
               </button>
 
               {isStatusOpen && (
-                <div className="absolute left-0 top-full z-50 mt-3 w-80 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl shadow-black/40">
+                <div className="absolute left-0 top-full z-50 mt-3 w-80 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl shadow-black/40">
                   <div className="py-3">
                     {Object.entries(taskStatusConfig).map(([key, value]) => {
                       const isSelected = key === status;
@@ -546,9 +547,9 @@ export default function TaskDetailsModal({
                             setStatus(key as TaskStatus);
                             setIsStatusOpen(false);
                           }}
-                          className={`flex w-full items-center px-6 py-2.5 text-left transition hover:bg-zinc-800 ${
+                          className={`flex w-full items-center px-6 py-2.5 text-left transition hover:bg-[var(--secondary)] ${
                             isSelected
-                              ? "border-l-2 border-blue-500 bg-zinc-800"
+                              ? "border-l-2 border-[var(--primary)] bg-[var(--secondary)]"
                               : ""
                           }`}
                         >
@@ -610,12 +611,11 @@ export default function TaskDetailsModal({
                     {isAssigneeOpen && (
                       <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg">
                         <div className="border-b border-[var(--border)] p-2">
-                          <input
+                          <SearchBar
                             autoFocus
                             value={assigneeSearch}
-                            onChange={(e) => setAssigneeSearch(e.target.value)}
+                            onChange={setAssigneeSearch}
                             placeholder="Search member..."
-                            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${classNames.input.bg} ${classNames.input.border} ${classNames.input.text} ${classNames.input.placeholder} ${classNames.input.focus}`}
                           />
                         </div>
 

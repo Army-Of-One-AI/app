@@ -5,7 +5,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-export default function DashboardLayout({ children }: Props) {
+export default function SettingsLayout({ children }: Props) {
   return (
     <div
       className={`
@@ -18,12 +18,11 @@ export default function DashboardLayout({ children }: Props) {
       <main
         className={`
           absolute
-          top-3
+          top-0
           left-60
           h-[calc(100vh-24px)]
           w-[calc(100vw-252px)]
           overflow-y-auto
-          rounded-xl
           border
           ${classNames.background}
           ${classNames.border}

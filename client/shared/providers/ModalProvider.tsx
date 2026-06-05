@@ -93,7 +93,7 @@ export default function ModalProvider({
                 damping: 35,
                 mass: 0.8,
               }}
-              className={`flex flex-col rounded-lg ${classNames.surface} px-6 pb-6 shadow-2xl`}
+              className={`flex flex-col rounded-lg ${classNames.background} px-6 pb-6 shadow-lg border ${classNames.border}`}
             >
               {showHeader && (
                 <div
@@ -108,7 +108,9 @@ export default function ModalProvider({
                       </div>
 
                       <button onClick={() => setModalContent(null)}>
-                        <X className={classNames.text.secondary} />
+                        <X
+                          className={`${classNames.text.secondary} cursor-pointer`}
+                        />
                       </button>
                     </>
                   )}
