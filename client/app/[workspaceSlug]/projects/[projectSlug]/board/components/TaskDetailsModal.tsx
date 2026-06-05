@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { TActivity, Task } from "@/features/tasks/types";
+import { TaskActivityItem, Task, TaskDetails } from "@/features/tasks/types";
 import { TaskActivity, TaskPriority, TaskStatus } from "@/shared/types/enums";
 import RichTextEditor from "@/shared/ui/RichTextEditor";
 import Button from "@/shared/ui/Button";
@@ -22,6 +22,7 @@ import useDeleteTask from "@/features/tasks/hooks/useDeleteTask";
 import TaskVerifyModal from "./TaskVerifyModal";
 import useArchiveTask from "@/features/tasks/hooks/useArchiveTask";
 import Link from "next/link";
+import useTaskActivities from "@/features/tasks/hooks/useTaskActivities";
 
 type Props = {
   taskId: string;
@@ -36,10 +37,6 @@ type Props = {
 type TaskDescription = {
   html: string;
   plainText: string;
-};
-
-type TaskWithActivities = Task & {
-  activities?: TActivity[];
 };
 
 const emptyDescription: TaskDescription = {
@@ -69,9 +66,27 @@ export default function TaskDetailsModal({
     data: task,
     isLoading,
     isError,
+    refetch: refetchTaskDetails,
   } = useGetTaskById(taskId, projectSlug, workspaceSlug);
 
-  const typedTask = task as TaskWithActivities | undefined;
+  const typedTask = task as TaskDetails | undefined;
+
+  const {
+    data: taskActivitiesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isRefetching: isRefetchingActivities,
+  } = useTaskActivities({
+    projectSlug,
+    workspaceSlug,
+    taskId,
+    limit: 5,
+  });
+
+  const taskActivities = useMemo(() => {
+    return taskActivitiesData?.pages.flatMap((page) => page.items) ?? [];
+  }, [taskActivitiesData]);
 
   const { mutateAsync: updateTask, isPending } = useUpdateTask();
   const { mutateAsync: createTask, isPending: isCreatingTask } = useCreateTask(
@@ -179,6 +194,14 @@ export default function TaskDetailsModal({
     });
 
     onUpdate(updatedTask);
+
+    await Promise.allSettled([
+      queryClient.invalidateQueries({
+        queryKey: ["get-task-activities", workspaceSlug, projectSlug, taskId],
+      }),
+      refetchTaskDetails(),
+    ]);
+
     onClose();
   };
 
@@ -451,13 +474,32 @@ export default function TaskDetailsModal({
                 </div>
 
                 <div className="max-h-80 overflow-y-auto">
-                  {typedTask.activities?.length ? (
-                    typedTask.activities.map((activity) => (
+                  {isRefetchingActivities && !isFetchingNextPage && (
+                    <div className="border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--text-secondary)]">
+                      Updating activity...
+                    </div>
+                  )}
+
+                  {taskActivities.length ? (
+                    taskActivities.map((activity) => (
                       <ActivityItem key={activity.id} activity={activity} />
                     ))
                   ) : (
                     <div className="px-4 py-6 text-sm text-[var(--text-secondary)]">
                       No activity yet.
+                    </div>
+                  )}
+
+                  {hasNextPage && (
+                    <div className="border-t border-[var(--border)] p-3">
+                      <button
+                        type="button"
+                        disabled={isFetchingNextPage}
+                        onClick={() => fetchNextPage()}
+                        className="w-full rounded-md px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isFetchingNextPage ? "Loading..." : "Load more"}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -781,12 +823,12 @@ export default function TaskDetailsModal({
   );
 }
 
-function ActivityItem({ activity }: { activity: TActivity }) {
+function ActivityItem({ activity }: { activity: TaskActivityItem }) {
   return (
     <div className="flex gap-3 border-b border-[var(--border)] px-4 py-3 last:border-b-0">
-      {activity.actor.avatar ? (
+      {activity.actor.avatarURL ? (
         <img
-          src={activity.actor.avatar}
+          src={activity.actor.avatarURL}
           alt={activity.actor.fullName}
           className="h-8 w-8 rounded-full object-cover"
         />
@@ -812,7 +854,7 @@ function ActivityItem({ activity }: { activity: TActivity }) {
   );
 }
 
-function renderActivityText(activity: TActivity) {
+function renderActivityText(activity: TaskActivityItem) {
   const before = activity.metadata?.before;
   const after = activity.metadata?.after;
 

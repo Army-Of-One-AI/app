@@ -322,19 +322,21 @@ model Document {
 }
 
 model TaskActivityLog {
-  id                  String       @id @default(uuid())
+  id String @id @default(uuid())
 
-  task_id              String
-  user_id              String?
+  task_id    String
+  project_id String
+  user_id    String?
 
-  actor_name_snapshot  String?
+  actor_name_snapshot   String?
   actor_avatar_snapshot String?
 
-  activity             TaskActivity
-  metadata             Json?
+  activity TaskActivity
+  metadata Json?
 
-  created_at           DateTime     @default(now())
+  created_at DateTime @default(now())
 
-  @@index([task_id, created_at])
-  @@index([user_id, created_at])
+  @@index([task_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([project_id, created_at(sort: Desc)])
 }

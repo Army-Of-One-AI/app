@@ -4,6 +4,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { TaskActivity, TaskPriority, TaskStatus } from 'generated/prisma/enums';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Prisma } from 'generated/prisma/browser';
+import GetTaskActivitiesDto from '../workspaces/dto/get-task-activities.dto';
 
 @Injectable()
 export class TasksService {
@@ -107,6 +108,7 @@ export class TasksService {
           user_id: userId,
           actor_name_snapshot: user.userInfo?.full_name || '',
           actor_avatar_snapshot: user.userInfo?.avatar_url || '',
+          project_id: project.id,
         },
       });
 
@@ -138,22 +140,30 @@ export class TasksService {
     taskId: string,
     dto: UpdateTaskDto,
   ) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: userId,
-      },
-      select: {
-        userInfo: {
-          select: {
-            full_name: true,
-            avatar_url: true,
+    const [user, project] = await this.prisma.$transaction([
+      this.prisma.user.findFirst({
+        where: {
+          id: userId,
+        },
+        select: {
+          userInfo: {
+            select: {
+              full_name: true,
+              avatar_url: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.project.findFirst({
+        where: {
+          slug: projectSlug,
+          deleted_at: null,
+        },
+      }),
+    ]);
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (!user || !project) {
+      throw new NotFoundException('Resource not found');
     }
 
     const task = await this.prisma.task.findFirst({
@@ -194,6 +204,7 @@ export class TasksService {
         actor_name_snapshot: user.userInfo?.full_name || '',
         user_id: userId,
         activity: TaskActivity.TITLE_CHANGED,
+        project_id: project.id,
         metadata: {
           before: task.title,
           after: dto.title,
@@ -214,6 +225,7 @@ export class TasksService {
         task_id: task.id,
         activity: TaskActivity.DESCRIPTION_UPDATED,
         user_id: userId,
+        project_id: project.id,
         actor_avatar_snapshot: user.userInfo?.avatar_url || '',
         actor_name_snapshot: user.userInfo?.full_name || '',
         metadata: {
@@ -227,6 +239,7 @@ export class TasksService {
       activities.push({
         task_id: task.id,
         activity: TaskActivity.STATUS_CHANGED,
+        project_id: project.id,
         actor_avatar_snapshot: user.userInfo?.avatar_url || '',
         actor_name_snapshot: user.userInfo?.full_name || '',
         user_id: userId,
@@ -248,6 +261,7 @@ export class TasksService {
         if (nextAssignee) {
           activities.push({
             task_id: task.id,
+            project_id: project.id,
             activity: TaskActivity.ASSIGNEE_CHANGED,
             actor_avatar_snapshot: user.userInfo?.avatar_url || '',
             actor_name_snapshot: user.userInfo?.full_name || '',
@@ -261,6 +275,7 @@ export class TasksService {
       } else {
         activities.push({
           task_id: task.id,
+          project_id: project.id,
           activity: TaskActivity.ASSIGNEE_CHANGED,
           actor_avatar_snapshot: user.userInfo?.avatar_url || '',
           actor_name_snapshot: user.userInfo?.full_name || '',
@@ -276,6 +291,7 @@ export class TasksService {
     if (dto.priority !== undefined && dto.priority !== task.priority) {
       activities.push({
         task_id: task.id,
+        project_id: project.id,
         activity: TaskActivity.PRIORITY_CHANGED,
         actor_avatar_snapshot: user.userInfo?.avatar_url || '',
         actor_name_snapshot: user.userInfo?.full_name || '',
@@ -300,6 +316,7 @@ export class TasksService {
     if (dto.dueDate !== undefined && currentDueTime !== nextDueTime) {
       activities.push({
         task_id: task.id,
+        project_id: project.id,
         activity: TaskActivity.DUE_DATE_CHANGED,
         actor_avatar_snapshot: user.userInfo?.avatar_url || '',
         actor_name_snapshot: user.userInfo?.full_name || '',
@@ -587,15 +604,6 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    const activities = await this.prisma.taskActivityLog.findMany({
-      where: {
-        task_id: t.id,
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
-    });
-
     return {
       id: t.id,
       title: t.title,
@@ -610,18 +618,6 @@ export class TasksService {
       startedAt: t.started_at,
 
       parentTask: t.parent_task,
-
-      activities: activities.map((a) => ({
-        id: a.id,
-        activity: a.activity,
-        actor: {
-          id: a.user_id,
-          avatar: a.actor_avatar_snapshot,
-          fullName: a.actor_name_snapshot,
-        },
-        metadata: a.metadata,
-        createdAt: a.created_at,
-      })),
 
       subtasks: t.sub_tasks.map((st) => ({
         id: st.id,
@@ -766,5 +762,79 @@ export class TasksService {
     });
 
     return { success: true };
+  }
+
+  async getTaskActivities(
+    taskId: string,
+    projectSlug: string,
+    query: GetTaskActivitiesDto,
+  ) {
+    const safeLimit = Math.min(
+      100,
+      Math.max(1, Number(query.limit ?? 20) || 20),
+    );
+    const cursor = query.cursor;
+
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        project: {
+          slug: projectSlug,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Resource not found');
+    }
+
+    const activities = await this.prisma.taskActivityLog.findMany({
+      where: {
+        task_id: taskId,
+      },
+      take: safeLimit + 1,
+      ...(cursor
+        ? {
+            cursor: {
+              id: cursor,
+            },
+            skip: 1,
+          }
+        : {}),
+      orderBy: [
+        {
+          created_at: 'desc',
+        },
+        {
+          id: 'desc',
+        },
+      ],
+    });
+
+    const hasMore = activities.length > safeLimit;
+    const items = hasMore ? activities.slice(0, safeLimit) : activities;
+    const nextCursor = hasMore ? items[items.length - 1]?.id : null;
+
+    return {
+      items: items.map((ac) => ({
+        id: ac.id,
+        activity: ac.activity,
+        createdAt: ac.created_at,
+        metadata: ac.metadata,
+        actor: {
+          id: ac.user_id,
+          fullName: ac.actor_name_snapshot,
+          avatarURL: ac.actor_avatar_snapshot,
+        },
+      })),
+      pagination: {
+        limit: safeLimit,
+        hasMore,
+        nextCursor,
+      },
+    };
   }
 }

@@ -53,6 +53,8 @@ export default function ProjectBoardPage() {
   const searchParams = useSearchParams();
   const selectedTask = searchParams.get("selectedTask");
 
+  const [refetchingTaskIds, setRefetchingTaskIds] = useState<string[]>([]);
+
   const workspaceSlug = params.workspaceSlug as string;
   const projectSlug = params.projectSlug as string;
 
@@ -67,7 +69,7 @@ export default function ProjectBoardPage() {
   } = useTasksByProjectSlug(projectSlug, workspaceSlug);
 
   const createTaskMutation = useCreateTask(workspaceSlug, projectSlug);
-  const { mutate: updateTask } = useUpdateTask();
+  const { mutateAsync: updateTask } = useUpdateTask();
 
   const [mounted, setMounted] = useState(false);
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
@@ -149,7 +151,7 @@ export default function ProjectBoardPage() {
     setVisibleStatuses(statusesWithTasks);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (!over) return;
@@ -170,24 +172,28 @@ export default function ProjectBoardPage() {
       )
     );
 
-    updateTask(
-      {
+    try {
+      setRefetchingTaskIds((curr) => [...curr, taskId]);
+      await updateTask({
         status: nextStatus,
         workspaceSlug,
         taskId,
         projectSlug,
-      },
-      {
-        onError: (error: Error) => {
-          toast.update("update-task", {
-            render: error.message || "Failed to update task",
-            type: "error",
-            isLoading: false,
-            autoClose: 3000,
-          });
-        },
-      }
-    );
+      });
+      await queryClient.refetchQueries({
+        queryKey: ["get-task-by-id", taskId, projectSlug, workspaceSlug],
+        type: "all",
+      });
+      setRefetchingTaskIds((curr) => curr.filter((tId) => tId !== taskId));
+    } catch (error: unknown) {
+      const err = error as Error;
+      toast.update("update-task", {
+        render: err.message || "Failed to update task",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
   };
 
   const handleOpenTaskDetails = (taskId: string) => {
@@ -386,6 +392,7 @@ export default function ProjectBoardPage() {
           onDragEnd={canUpdateTaskStatus ? handleDragEnd : undefined}
         >
           <BoardColumns
+            refetchingTaskIds={refetchingTaskIds}
             columns={visibleColumns}
             canCreateTask={canCreateTask}
             tasksByStatus={tasksByStatus}
@@ -396,6 +403,7 @@ export default function ProjectBoardPage() {
         </DndContext>
       ) : (
         <BoardColumns
+          refetchingTaskIds={refetchingTaskIds}
           columns={visibleColumns}
           canCreateTask={canCreateTask}
           tasksByStatus={tasksByStatus}
@@ -419,6 +427,7 @@ function BoardColumns({
   canCreateTask,
   canUpdateTaskStatus,
   onOpenTaskDetails,
+  refetchingTaskIds,
 }: {
   columns: readonly BoardColumn[];
   tasksByStatus: Record<BoardStatus, Task[]>;
@@ -427,6 +436,7 @@ function BoardColumns({
   canCreateTask: boolean;
   canUpdateTaskStatus: boolean;
   onOpenTaskDetails: (taskID: string) => void;
+  refetchingTaskIds: string[];
 }) {
   return (
     <div className="flex flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4">
@@ -441,6 +451,7 @@ function BoardColumns({
           canCreateTask={canCreateTask}
           onCreateTask={onCreateTask}
           onOpenTaskDetails={onOpenTaskDetails}
+          refetchingTaskIds={refetchingTaskIds}
         />
       ))}
     </div>
@@ -456,6 +467,7 @@ function KanbanColumn({
   onCreateTask,
   canUpdateTaskStatus,
   onOpenTaskDetails,
+  refetchingTaskIds,
 }: {
   id: BoardStatus;
   title: string;
@@ -465,6 +477,7 @@ function KanbanColumn({
   onCreateTask: (status: BoardStatus) => void;
   canUpdateTaskStatus: boolean;
   onOpenTaskDetails: (taskId: string) => void;
+  refetchingTaskIds: string[];
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -507,6 +520,7 @@ function KanbanColumn({
       <div className="space-y-3">
         {tasks.map((task) => (
           <TaskCard
+            isRefetching={refetchingTaskIds.includes(task.id)}
             key={task.id}
             task={task}
             canUpdateTaskStatus={canUpdateTaskStatus}
@@ -533,12 +547,14 @@ function KanbanColumn({
 function TaskCard({
   task,
   disabled,
+  isRefetching,
   canUpdateTaskStatus,
   onOpenTaskDetails,
 }: {
   task: Task;
   disabled?: boolean;
   canUpdateTaskStatus: boolean;
+  isRefetching: boolean;
   onOpenTaskDetails: (taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -572,39 +588,48 @@ function TaskCard({
   };
 
   return (
-    <article
-      onClick={() => onOpenTaskDetails(task.id)}
-      onPointerDown={(e) => {
-        e.stopPropagation();
+    <div className="relative rounded-xl">
+      {isRefetching && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-xl bg-[var(--surface)]/55 backdrop-blur-[2px]">
+          <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] shadow-sm">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--primary)]" />
+            Updating
+          </div>
+        </div>
+      )}
+      <article
+        onClick={() => onOpenTaskDetails(task.id)}
+        onPointerDown={(e) => {
+          e.stopPropagation();
 
-        if (!canUpdateTaskStatus) {
-          handleDragAttempt();
-        }
-      }}
-      ref={setNodeRef}
-      style={style}
-      className={`
-        cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs
+          if (!canUpdateTaskStatus) {
+            handleDragAttempt();
+          }
+        }}
+        ref={setNodeRef}
+        style={style}
+        className={`
+        cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs 
         ${
           isDragging
             ? "scale-[1.02] opacity-80 shadow-lg"
             : "transition-shadow hover:shadow-sm"
         }
       `}
-    >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
-            {task.title}
-          </h3>
-        </div>
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
+              {task.title}
+            </h3>
+          </div>
 
-        <button
-          type="button"
-          onPointerDown={!canUpdateTaskStatus ? handleDragAttempt : undefined}
-          {...(canUpdateTaskStatus ? listeners : {})}
-          {...(canUpdateTaskStatus ? attributes : {})}
-          className={`
+          <button
+            type="button"
+            onPointerDown={!canUpdateTaskStatus ? handleDragAttempt : undefined}
+            {...(canUpdateTaskStatus ? listeners : {})}
+            {...(canUpdateTaskStatus ? attributes : {})}
+            className={`
             rounded-md p-1 transition
             ${
               canUpdateTaskStatus
@@ -612,33 +637,34 @@ function TaskCard({
                 : "cursor-not-allowed text-[var(--text-secondary)]/50"
             }
           `}
-        >
-          <GripVertical size={16} />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-          {task.dueDate && (
-            <>
-              <CalendarDays size={14} />
-              <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-            </>
-          )}
+          >
+            <GripVertical size={16} />
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <PriorityBadge priority={task.priority} />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            {task.dueDate && (
+              <>
+                <CalendarDays size={14} />
+                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+              </>
+            )}
+          </div>
 
-          <div
-            title={task.assignee?.fullName ?? "Unassigned"}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-[var(--on-primary)]"
-          >
-            {assigneeInitial}
+          <div className="flex items-center gap-2">
+            <PriorityBadge priority={task.priority} />
+
+            <div
+              title={task.assignee?.fullName ?? "Unassigned"}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-[var(--on-primary)]"
+            >
+              {assigneeInitial}
+            </div>
           </div>
         </div>
-      </div>
-    </article>
+      </article>
+    </div>
   );
 }
 

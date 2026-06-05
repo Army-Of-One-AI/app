@@ -38,7 +38,7 @@ export type Task = {
   parentTask: Task | null;
 };
 
-export type TActivity = {
+export type TaskActivityItem = {
   id: string;
   createdAt: string;
   activity: TaskActivity;
@@ -49,10 +49,25 @@ export type TActivity = {
   actor: {
     fullName: string;
     id: string;
-    avatar: string;
+    avatarURL: string;
   };
 };
 
-export type TaskDetails = Task & {
-  activities: TActivity[];
+export type TaskDetails = Task;
+
+export type GetTaskActivitiesParams = {
+  workspaceSlug: string;
+  projectSlug: string;
+  taskId: string;
+  cursor?: string;
+  limit?: number;
+};
+
+export type TaskActivitiesResponse = {
+  items: TaskActivityItem[];
+  pagination: {
+    limit: number;
+    hasMore: boolean;
+    nextCursor: string | null;
+  };
 };

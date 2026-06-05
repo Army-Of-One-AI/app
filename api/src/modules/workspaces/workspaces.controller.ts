@@ -38,6 +38,7 @@ import { UpdateTaskDto } from '../tasks/dto/update-task.dto';
 import { DocumentsService } from '../documents/documents.service';
 import findProjectDocumentsDto from '../documents/dto/find-project-documents.dto';
 import CreateDocumentDto from '../documents/dto/create-document.dto';
+import GetTaskActivitiesDto from './dto/get-task-activities.dto';
 @Controller('workspaces')
 export class WorkspacesController {
   constructor(
@@ -221,6 +222,16 @@ export class WorkspacesController {
     @Param('taskId') taskId: string,
   ) {
     return await this.tasksService.unarchiveTask(taskId, pjSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/tasks/:taskId/activities')
+  async getTaskActivities(
+    @Param('projectSlug') pjSlug: string,
+    @Param('taskId') taskId: string,
+    @Query() query: GetTaskActivitiesDto,
+  ) {
+    return await this.tasksService.getTaskActivities(taskId, pjSlug, query);
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
