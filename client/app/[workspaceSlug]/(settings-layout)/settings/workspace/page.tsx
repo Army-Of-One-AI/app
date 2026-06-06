@@ -1,12 +1,19 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import slugify from "slugify";
 import useWorkspaceDetailsBySlug from "@/features/workspaces/hooks/useWorkspaceDetailsBySlug";
+import { deleteWorkspace } from "@/features/workspaces/api/deleteWorkspace";
 import useSlugs from "@/shared/hooks/useSlugs";
 import { classNames } from "@/shared/styles/classNames";
-import { AlertTriangle, Camera, Check, X } from "lucide-react";
+import { Camera, Check, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import DeleteWorkspaceModal from "./components/DeleteWorkspaceModal";
+import WorkspaceUrlModal from "./components/WorkspaceURLModal";
+import SettingRow from "./components/SettingRow";
+import useUpdateWorkspaceSettings from "@/features/workspaces/hooks/useUpdateWorkspaceSettings";
+import { useRouter } from "next/navigation";
 
 type WorkspaceForm = {
   name: string;
@@ -20,19 +27,22 @@ const APP_HOST = APP_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
 export default function SettingsWorkspacePage() {
   const slugs = useSlugs();
+  const router = useRouter();
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data, isLoading, error } = useWorkspaceDetailsBySlug(
+  const { data, isLoading, error, refetch } = useWorkspaceDetailsBySlug(
     slugs.workspace.slug
   );
 
-  const [isSaving, setIsSaving] = useState(false);
   const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [draftSlug, setDraftSlug] = useState("");
   const [logoPreviewURL, setLogoPreviewURL] = useState("");
+
+  const { mutateAsync: update, isPending: isSaving } =
+    useUpdateWorkspaceSettings();
 
   const [form, setForm] = useState<WorkspaceForm>({
     name: "",
@@ -69,12 +79,6 @@ export default function SettingsWorkspacePage() {
 
   const workspaceInitial = (form.name || "Workspace").charAt(0).toUpperCase();
 
-  const sanitizeSlug = (value: string) =>
-    value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9-]/g, "");
-
   const handleCancel = () => {
     setForm(initialForm);
     setLogoPreviewURL(initialForm.logoURL);
@@ -97,42 +101,37 @@ export default function SettingsWorkspacePage() {
   };
 
   const handleSaveWorkspace = async () => {
-    try {
-      setIsSaving(true);
+    const payload = {
+      ...(form.logoFile && { logoURL: form.logoURL }),
+      name: form.name,
+      slug: form.slug,
+    };
 
-      const payload = new FormData();
-      payload.append("name", form.name.trim());
+    await update({
+      workspaceSlug: slugs.workspace.slug,
+      payload,
+    });
 
-      if (form.logoFile) {
-        payload.append("logo", form.logoFile);
-      }
-
-      // TODO: await updateWorkspace(slugs.workspace.slug, payload);
-    } finally {
-      setIsSaving(false);
-    }
+    refetch();
   };
 
   const handleUpdateSlug = async () => {
-    try {
-      setIsSaving(true);
+    await update({
+      workspaceSlug: slugs.workspace.slug,
+      payload: { slug: draftSlug, name: form.name },
+    });
 
-      const nextSlug = sanitizeSlug(draftSlug);
+    setForm((curr) => ({ ...curr, slug: draftSlug }));
+    setIsUrlModalOpen(false);
 
-      // TODO: await updateWorkspaceSlug(slugs.workspace.slug, nextSlug);
-
-      setForm((curr) => ({ ...curr, slug: nextSlug }));
-      setIsUrlModalOpen(false);
-    } finally {
-      setIsSaving(false);
-    }
+    window.location.href = `${APP_URL}/${draftSlug}/settings/workspace`;
   };
 
   const handleDeleteWorkspace = async () => {
     try {
       setIsDeletingWorkspace(true);
 
-      // TODO: await deleteWorkspace(slugs.workspace.slug);
+      await deleteWorkspace(slugs.workspace.slug);
 
       setIsDeleteModalOpen(false);
     } finally {
@@ -294,7 +293,9 @@ export default function SettingsWorkspacePage() {
         draftSlug={draftSlug}
         isSaving={isSaving}
         onClose={() => setIsUrlModalOpen(false)}
-        onChange={(value) => setDraftSlug(sanitizeSlug(value))}
+        onChange={(value) =>
+          setDraftSlug(slugify(value, { lower: true, strict: true }))
+        }
         onConfirm={handleUpdateSlug}
       />
 
@@ -310,273 +311,8 @@ export default function SettingsWorkspacePage() {
   );
 }
 
-function WorkspaceUrlModal({
-  isOpen,
-  draftSlug,
-  isSaving,
-  onClose,
-  onChange,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  draftSlug: string;
-  isSaving: boolean;
-  onClose: () => void;
-  onChange: (value: string) => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <motion.button
-            type="button"
-            aria-label="Close workspace URL modal"
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          />
-
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.18 }}
-            className="relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Change workspace URL</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSaving}
-                className={`rounded-lg p-1 hover:bg-[var(--secondary)] disabled:opacity-60 ${classNames.text.secondary}`}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <p className={`mt-7 text-sm ${classNames.text.secondary}`}>
-              This will change all your URLs and old ones will be redirected.
-            </p>
-
-            <label className="mt-6 block text-sm font-semibold">
-              Enter the new workspace URL
-            </label>
-
-            <div className="mt-3 flex rounded-lg border border-[var(--primary)] bg-[var(--background)] px-3 py-2 text-sm">
-              <span className={classNames.text.secondary}>{APP_HOST}/</span>
-              <input
-                value={draftSlug}
-                onChange={(event) => onChange(event.target.value)}
-                autoFocus
-                className="min-w-0 flex-1 bg-transparent font-semibold outline-none"
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSaving}
-                className="rounded-lg bg-[var(--secondary)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={isSaving || !draftSlug.trim()}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {isSaving ? "Updating..." : "Update"}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function DeleteWorkspaceModal({
-  isOpen,
-  isLoading,
-  workspaceName,
-  workspaceSlug,
-  onClose,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  isLoading: boolean;
-  workspaceName: string;
-  workspaceSlug: string;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  const [confirmSlug, setConfirmSlug] = useState("");
-
-  const canDelete = confirmSlug.trim() === workspaceSlug;
-
-  useEffect(() => {
-    if (!isOpen) {
-      setConfirmSlug("");
-    }
-  }, [isOpen]);
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <motion.button
-            type="button"
-            aria-label="Close delete workspace modal"
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          />
-
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.18 }}
-            className="
-              relative w-full max-w-xl
-              rounded-2xl
-              border border-[var(--border)]
-              bg-[var(--card)]
-              p-6
-              shadow-2xl
-            "
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-red-400">
-                <AlertTriangle size={20} />
-              </div>
-
-              <div className="flex-1">
-                <h2 className="text-lg font-semibold">Delete workspace</h2>
-
-                <p className={`mt-2 text-sm ${classNames.text.secondary}`}>
-                  This action cannot be undone. This will permanently delete the
-                  workspace{" "}
-                  <span className="font-semibold text-[var(--foreground)]">
-                    {workspaceName}
-                  </span>{" "}
-                  and remove all associated projects, tasks, documents, members,
-                  and settings.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isLoading}
-                className={`
-                  rounded-lg p-1
-                  hover:bg-[var(--secondary)]
-                  disabled:opacity-60
-                  ${classNames.text.secondary}
-                `}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="mt-8">
-              <label className="mb-2 block text-sm font-medium">
-                To confirm, type{" "}
-                <span className="font-mono font-semibold">
-                  {`"${workspaceSlug}"`}
-                </span>{" "}
-                in the box below
-              </label>
-
-              <input
-                value={confirmSlug}
-                onChange={(event) => setConfirmSlug(event.target.value)}
-                placeholder={workspaceSlug}
-                autoFocus
-                disabled={isLoading}
-                className="
-                  w-full rounded-lg
-                  border border-red-500/30
-                  bg-[var(--background)]
-                  px-3 py-2.5
-                  text-sm
-                  outline-none
-                  focus:border-red-400
-                  disabled:opacity-60
-                "
-              />
-
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={!canDelete || isLoading}
-                className="
-                  mt-4 w-full
-                  rounded-lg
-                  bg-red-600
-                  py-2.5
-                  text-sm font-semibold
-                  text-white
-                  transition-colors
-
-                  hover:bg-red-500
-
-                  disabled:cursor-not-allowed
-                  disabled:bg-red-600/40
-                  disabled:text-white/60
-                "
-              >
-                {isLoading ? "Deleting workspace..." : "Delete this workspace"}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-3 mt-12 px-4 text-sm font-semibold">{children}</h2>;
-}
-
-function SettingRow({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[1fr_256px] items-center gap-5 border-b border-[var(--border)] px-4 py-4 last:border-b-0">
-      <div className="min-w-0">
-        <div className="text-sm font-semibold">{label}</div>
-        {description && (
-          <div className={`mt-1 text-sm ${classNames.text.secondary}`}>
-            {description}
-          </div>
-        )}
-      </div>
-
-      <div className="min-w-0">{children}</div>
-    </div>
-  );
 }
 
 function Input({

@@ -12,3 +12,9 @@ export type WorkspaceDetails = {
   createdAt: string;
   updatedAt?: string;
 };
+
+export type UpdateWorkspaceSettingsPayload = {
+  name?: string;
+  slug?: string;
+  logoURL?: string;
+};

@@ -500,7 +500,7 @@ function KanbanColumn({
   });
   const statusStyle = taskStatusConfig[id];
   const columnStyle: CSSProperties = {
-    borderColor: statusStyle.bg,
+    borderColor: "var(--border)",
     background: isOver
       ? `color-mix(in srgb, ${statusStyle.bg} 34%, var(--background))`
       : `color-mix(in srgb, ${statusStyle.bg} 12%, var(--background))`,
@@ -520,7 +520,7 @@ function KanbanColumn({
         min-h-[560px]
         rounded-2xl
         border
-        p-3
+        p-3 shadow-sm
         relative
         overflow-y-auto
         transition
@@ -698,12 +698,21 @@ function TaskCard({
           <div className="flex items-center gap-2">
             <PriorityBadge priority={task.priority} />
 
-            <div
-              title={task.assignee?.fullName ?? "Unassigned"}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-bold text-[var(--ink)]"
-            >
-              {assigneeInitial}
-            </div>
+            {task.assignee &&
+              (task.assignee.avatarURL ? (
+                <img
+                  alt={`${task.assignee.username}-avatar`}
+                  src={task.assignee.avatarURL}
+                  className="w-7 h-7 rounded-full"
+                />
+              ) : (
+                <div
+                  title={task.assignee?.fullName ?? "Unassigned"}
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-(--border) text-xs font-bold text-(--muted)"
+                >
+                  {assigneeInitial}
+                </div>
+              ))}
           </div>
         </div>
       </article>

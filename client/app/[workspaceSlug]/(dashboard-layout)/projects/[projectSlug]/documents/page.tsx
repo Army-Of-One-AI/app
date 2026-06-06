@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Plus,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Plus } from "lucide-react";
 import { DateTime } from "luxon";
 
 import useProjectDocuments from "@/features/documents/hooks/useProjectDocuments";
@@ -15,6 +10,7 @@ import DataTable from "@/shared/ui/Table";
 import useGetProjectMembers from "@/features/projects/hooks/useGetProjectMembers";
 import useSlugs from "@/shared/hooks/useSlugs";
 import SearchBar from "@/shared/ui/SearchBar";
+import Select from "@/shared/ui/Select";
 
 const filterControlClass =
   "h-9 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] " +
@@ -131,29 +127,40 @@ export default function DocumentsPage() {
             )}
         </div>
 
-        <select
-          value={creatorId}
-          onChange={(e) => handleCreatorChange(e.target.value)}
-          className={filterControlClass}
-        >
-          <option value="">All members</option>
-          {members?.map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.fullName ?? member.username}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={orderBy}
-          onChange={(e) =>
-            handleOrderChange(e.target.value as "latest" | "oldest")
+        <Select
+          items={
+            members
+              ? members.map((m) => ({
+                  label: m.fullName ?? m.username,
+                  value: m.id,
+                }))
+              : []
           }
-          className={filterControlClass}
-        >
-          <option value="latest">Latest first</option>
-          <option value="oldest">Oldest first</option>
-        </select>
+          className="w-50"
+          onItemClicked={(value) => handleCreatorChange(value as string)}
+          selectedValue={creatorId}
+          allOptionLabel="All members"
+          searchable
+          showAllOption
+        />
+
+        <Select
+          items={[
+            {
+              value: "latest",
+              label: "Latest first",
+            },
+            {
+              value: "oldest",
+              label: "Oldest first",
+            },
+          ]}
+          className="w-38"
+          onItemClicked={(value) =>
+            handleOrderChange(value as "latest" | "oldest")
+          }
+          selectedValue={orderBy}
+        />
       </div>
 
       <DataTable

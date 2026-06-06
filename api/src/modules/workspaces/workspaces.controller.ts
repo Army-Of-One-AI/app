@@ -39,6 +39,7 @@ import { DocumentsService } from '../documents/documents.service';
 import findProjectDocumentsDto from '../documents/dto/find-project-documents.dto';
 import CreateDocumentDto from '../documents/dto/create-document.dto';
 import GetTaskActivitiesDto from './dto/get-task-activities.dto';
+import InviteByEmailsDto from './dto/invite-by-emails.dto';
 @Controller('workspaces')
 export class WorkspacesController {
   constructor(
@@ -105,6 +106,23 @@ export class WorkspacesController {
       workspaceSlug,
     );
     return membership;
+  }
+
+  // @UseGuards(
+  //   JWTAuthGuard,
+  //   WorkspaceRoleGuard([WorkspaceRole.Owner, WorkspaceRole.Admin]),
+  // )
+  @Post(':workspaceSlug/invites')
+  async inviteByEmails(
+    @CurrentUser() user: { id: string },
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Body() payload: InviteByEmailsDto,
+  ) {
+    return await this.workspacesService.inviteByEmails(
+      'a3ea9f8d-0353-4e4a-9ccc-ff84db15cc49',
+      workspaceSlug,
+      payload,
+    );
   }
 
   @UseGuards(

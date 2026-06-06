@@ -16,7 +16,7 @@ const itemClassName = `cursor-pointer hover:bg-[var(--secondary)] text-[var(--te
 export default function TaskActions({ onClickDelete, onClickArchive }: Props) {
   return (
     <div
-      className={`w-full flex flex-col p-2 shadow-lg rounded-lg overflow-x-hidden ${classNames.surface}`}
+      className={`w-full flex flex-col p-2 shadow-lg rounded-lg overflow-x-hidden ${classNames.surface} border ${classNames.border}`}
     >
       <div className={itemClassName} onClick={() => onClickArchive?.()}>
         Archive

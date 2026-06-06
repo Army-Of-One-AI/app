@@ -94,10 +94,11 @@ model Workspace {
   slug     String  @unique
   logo_url String?
 
-  teams         Team[]
-  projects      Project[]
-  members       WorkspaceMember[]
-  lastUsedUsers User[]
+  teams            Team[]
+  projects         Project[]
+  members          WorkspaceMember[]
+  lastUsedUsers    User[]
+  workspaceInvites WorkspaceInvite[]
 
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
@@ -130,19 +131,20 @@ model User {
   email     String  @unique
   is_active Boolean @default(false)
 
-  userInfo          UserInfo?
-  teams             TeamMember[]    @relation(name: "UserTeams")
-  projectMembers    ProjectMember[]
-  created_tasks     Task[]          @relation(name: "TaskCreator")
-  assigned_tasks    Task[]          @relation(name: "TaskAssignee")
-  created_documents Document[]      @relation(name: "DocumentCreator")
+  userInfo                UserInfo?
+  teams                   TeamMember[]      @relation(name: "UserTeams")
+  projectMembers          ProjectMember[]
+  created_tasks           Task[]            @relation(name: "TaskCreator")
+  assigned_tasks          Task[]            @relation(name: "TaskAssignee")
+  created_documents       Document[]        @relation(name: "DocumentCreator")
+  workspaceMembers        WorkspaceMember[]
+  createdWorkspaceInvites WorkspaceInvite[]
 
   lastUsedWorkspace      Workspace? @relation(fields: [last_used_workspace_id], references: [id], onDelete: SetNull)
   last_used_workspace_id String?
 
-  created_at       DateTime          @default(now())
-  updated_at       DateTime?         @updatedAt
-  workspaceMembers WorkspaceMember[]
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
 }
 
 model UserInfo {
@@ -339,4 +341,24 @@ model TaskActivityLog {
   @@index([task_id, created_at(sort: Desc), id(sort: Desc)])
   @@index([user_id, created_at(sort: Desc)])
   @@index([project_id, created_at(sort: Desc)])
+}
+
+model WorkspaceInvite {
+  id String @id @default(uuid())
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  workspace_id String
+
+  email String
+
+  expires_at  DateTime
+  accepted_at DateTime?
+  revoked_at  DateTime?
+
+  creator    User   @relation(fields: [created_by], references: [id])
+  created_by String
+
+  created_at DateTime @default(now())
+
+  @@unique([workspace_id, email])
 }
