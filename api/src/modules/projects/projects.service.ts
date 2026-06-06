@@ -3,6 +3,7 @@ import PrismaService from 'src/shared/services/prisma.service';
 import FindProjectsDto from './dto/find-projects.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { Prisma } from 'generated/prisma/browser';
+import { DateTime } from 'luxon';
 
 @Injectable()
 export class ProjectsService {
@@ -258,5 +259,160 @@ export class ProjectsService {
       avatarURL: m.member.userInfo?.avatar_url,
       role: m.role,
     }));
+  }
+
+  async getProjectSummary(projectSlug: string, workspaceSlug: string) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        slug: projectSlug,
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const now = DateTime.now();
+    const projectId = project.id;
+
+    const last7DaysFrom = now.minus({ days: 6 }).startOf('day').toJSDate();
+    const todayEnd = now.endOf('day').toJSDate();
+
+    const next7DaysTo = now.plus({ days: 6 }).endOf('day').toJSDate();
+
+    const [
+      tasksCreatedLast7DaysCount,
+      tasksUpdatedLast7DaysCount,
+      tasksCompletedLast7DaysCount,
+      tasksDueNext7DaysCount,
+      tasksByStatus,
+      recentActivities,
+    ] = await this.prisma.$transaction([
+      this.prisma.task.count({
+        where: {
+          project_id: projectId,
+          archived_at: null,
+          deleted_at: null,
+          parent_task_id: null,
+          created_at: {
+            gte: last7DaysFrom,
+            lte: todayEnd,
+          },
+        },
+      }),
+
+      this.prisma.task.count({
+        where: {
+          project_id: projectId,
+          archived_at: null,
+          deleted_at: null,
+          parent_task_id: null,
+          updated_at: {
+            gte: last7DaysFrom,
+            lte: todayEnd,
+          },
+        },
+      }),
+
+      this.prisma.task.count({
+        where: {
+          project_id: projectId,
+          archived_at: null,
+          deleted_at: null,
+          parent_task_id: null,
+          completed_at: {
+            gte: last7DaysFrom,
+            lte: todayEnd,
+          },
+        },
+      }),
+
+      this.prisma.task.count({
+        where: {
+          project_id: projectId,
+          archived_at: null,
+          deleted_at: null,
+          parent_task_id: null,
+          due_date: {
+            gte: now.startOf('day').toJSDate(),
+            lte: next7DaysTo,
+          },
+        },
+      }),
+
+      this.prisma.task.groupBy({
+        by: ['status'],
+        where: {
+          project_id: projectId,
+          archived_at: null,
+          deleted_at: null,
+          parent_task_id: null,
+        },
+        _count: true,
+        orderBy: {
+          status: 'desc',
+        },
+      }),
+
+      this.prisma.taskActivityLog.findMany({
+        where: {
+          project_id: project.id,
+        },
+        orderBy: {
+          created_at: 'desc',
+        },
+        take: 10,
+      }),
+    ]);
+
+    const taskIds = [
+      ...new Set(
+        recentActivities.map((activity) => activity.task_id).filter(Boolean),
+      ),
+    ];
+
+    const tasks = taskIds.length
+      ? await this.prisma.task.findMany({
+          where: {
+            id: {
+              in: taskIds,
+            },
+          },
+          select: {
+            id: true,
+            title: true,
+            status: true,
+          },
+        })
+      : [];
+
+    const taskMap = new Map(tasks.map((task) => [task.id, task]));
+
+    const statusCounts = Object.fromEntries(
+      tasksByStatus.map((item) => [item.status, item._count]),
+    );
+
+    return {
+      tasksCreatedLast7DaysCount,
+      tasksUpdatedLast7DaysCount,
+      tasksCompletedLast7DaysCount,
+      tasksDueNext7DaysCount,
+      statusCounts,
+      recentActivities: recentActivities.map((activity) => ({
+        id: activity.id,
+        activity: activity.activity,
+        createdAt: activity.created_at,
+        metadata: activity.metadata,
+        task: taskMap.get(activity.task_id) ?? null,
+        actor: {
+          id: activity.user_id,
+          fullName: activity.actor_name_snapshot,
+          avatarURL: activity.actor_avatar_snapshot,
+        },
+      })),
+    };
   }
 }

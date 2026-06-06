@@ -10,6 +10,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { EmailsModule } from './modules/emails/emails.module';
+import { InvitationsModule } from './modules/invitations/invitations.module';
 
 @Module({
   imports: [
@@ -20,8 +21,8 @@ import { EmailsModule } from './modules/emails/emails.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         connection: {
-          host: configService.get('REDIS_HOST') ?? 'localhost',
-          port: configService.get('REDIS_PORT') ?? 6379,
+          host: configService.get<string>('REDIS_HOST') ?? 'localhost',
+          port: configService.get<number>('REDIS_PORT') ?? 6379,
         },
       }),
     }),
@@ -32,6 +33,7 @@ import { EmailsModule } from './modules/emails/emails.module';
     TasksModule,
     PermissionsModule,
     EmailsModule,
+    InvitationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

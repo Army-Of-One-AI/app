@@ -338,7 +338,10 @@ export class TasksService {
           ...(dto.description !== undefined && {
             description: dto.description,
           }),
-          ...(dto.status !== undefined && { status: dto.status }),
+          ...(dto.status !== undefined && {
+            status: dto.status,
+            ...(dto.status === 'Done' && { completed_at: new Date() }),
+          }),
           ...(dto.priority !== undefined && { priority: dto.priority }),
           ...(dto.estimate !== undefined && { estimate: dto.estimate }),
           ...(dto.dueDate !== undefined && {

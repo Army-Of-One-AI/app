@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,7 +8,6 @@ import { WorkspaceRole } from 'generated/prisma/enums';
 import UpsertWorkspaceDto from './dto/upsert-workspace.dto';
 import { Prisma } from 'generated/prisma/client';
 import { getUniqueFields } from 'src/shared/helpers/prisma.helper';
-import { ConfigService } from '@nestjs/config';
 import InviteByEmailsDto from './dto/invite-by-emails.dto';
 import { EmailsService } from '../emails/emails.service';
 
@@ -17,7 +15,6 @@ import { EmailsService } from '../emails/emails.service';
 export class WorkspacesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
     private readonly emailsService: EmailsService,
   ) {}
 
@@ -276,90 +273,91 @@ export class WorkspacesService {
     };
   }
 
-  async acceptInvite(userId: string, inviteId: string) {
-    const invite = await this.prisma.workspaceInvite.findUnique({
+  async getWorkspaceMembers(workspaceSlug: string) {
+    const members = await this.prisma.workspaceMember.findMany({
       where: {
-        id: inviteId,
-      },
-      include: {
         workspace: {
+          slug: workspaceSlug,
+        },
+      },
+      select: {
+        role: true,
+        created_at: true,
+        member: {
           select: {
             id: true,
-            slug: true,
-            name: true,
+            email: true,
+            username: true,
+            userInfo: {
+              select: {
+                full_name: true,
+                avatar_url: true,
+                title: true,
+                phone_no: true,
+              },
+            },
+            _count: {
+              select: {
+                teams: true,
+              },
+            },
           },
         },
       },
     });
 
-    if (!invite) {
-      throw new NotFoundException('Invite not found');
-    }
+    return members.map((m) => {
+      const { email, id, username, userInfo } = m.member;
+      return {
+        joinedAt: m.created_at,
+        role: m.role,
+        id,
+        email,
+        username,
+        teamsCount: m.member._count.teams,
+        fullName: userInfo?.full_name || '',
+        title: userInfo?.title || '',
+        phoneNo: userInfo?.title || '',
+        avatarURL: userInfo?.avatar_url || '',
+      };
+    });
+  }
 
-    if (invite.revoked_at) {
-      throw new BadRequestException('Invite has been revoked');
-    }
-
-    if (invite.accepted_at) {
-      throw new BadRequestException('Invite has already been accepted');
-    }
-
-    if (invite.expires_at < new Date()) {
-      throw new BadRequestException('Invite has expired');
-    }
-
-    const user = await this.prisma.user.findUnique({
+  async getWorkspaceInvites(workspaceSlug: string) {
+    const invites = await this.prisma.workspaceInvite.findMany({
       where: {
-        id: userId,
+        workspace: {
+          slug: workspaceSlug,
+        },
       },
       select: {
         id: true,
+        created_at: true,
         email: true,
+        accepted_at: true,
+        expires_at: true,
+        revoked_at: true,
+        creator: {
+          include: {
+            userInfo: true,
+          },
+        },
       },
     });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
-      throw new ForbiddenException(
-        'This invite was sent to a different email address',
-      );
-    }
-
-    const result = await this.prisma.$transaction(async (tx) => {
-      const member = await tx.workspaceMember.upsert({
-        where: {
-          workspace_id_member_id: {
-            workspace_id: invite.workspace_id,
-            member_id: userId,
-          },
-        },
-        create: {
-          workspace_id: invite.workspace_id,
-          member_id: userId,
-          role: 'Member',
-        },
-        update: {},
-      });
-
-      const acceptedInvite = await tx.workspaceInvite.update({
-        where: {
-          id: invite.id,
-        },
-        data: {
-          accepted_at: new Date(),
-        },
-      });
-
-      return {
-        workspace: invite.workspace,
-        member,
-        invite: acceptedInvite,
-      };
-    });
-
-    return result;
+    return invites.map((invite) => ({
+      id: invite.id,
+      createdAt: invite.created_at,
+      email: invite.email,
+      acceptedAt: invite.accepted_at,
+      expiresAt: invite.expires_at,
+      revokedAt: invite.revoked_at,
+      creator: {
+        id: invite.creator.id,
+        email: invite.creator.email,
+        fullName: invite.creator.userInfo?.full_name,
+        avatarURL: invite.creator.userInfo?.avatar_url,
+      },
+    }));
   }
 }

@@ -57,40 +57,43 @@
   --focus-danger: rgb(216 49 91 / 24%);
   --skeleton: rgb(255 250 255 / 12%);
 
-  /* Project & Task Status */
-  --status-planning-bg: rgb(10 36 99 / 30%);
-  --status-planning-text: #9db7f1;
+  /* Project Status */
 
-  --status-active-bg: rgb(62 146 204 / 22%);
-  --status-active-text: #a9d8f8;
+  --status-planning-bg: rgb(87 157 255 / 16%);
+  --status-planning-text: #579dff;
 
-  --status-onhold-bg: rgb(216 49 91 / 18%);
-  --status-onhold-text: #f089a1;
+  --status-active-bg: rgb(154 209 75 / 16%);
+  --status-active-text: #9ad14b;
 
-  --status-completed-bg: rgb(255 250 255 / 14%);
-  --status-completed-text: var(--paper);
+  --status-onhold-bg: rgb(192 132 252 / 16%);
+  --status-onhold-text: #c084fc;
 
-  --status-archived-bg: rgb(255 250 255 / 10%);
-  --status-archived-text: var(--smoke);
+  --status-completed-bg: rgb(34 197 94 / 16%);
+  --status-completed-text: #22c55e;
 
-  --task-status-backlog-bg: rgb(255 250 255 / 12%);
-  --task-status-backlog-text: var(--smoke);
+  --status-archived-bg: rgb(139 148 158 / 16%);
+  --status-archived-text: #8b949e;
 
-  --task-status-todo-bg: #3b6fd0;
-  --task-status-todo-text: #ffffff;
+  /* Task Status */
 
-  --task-status-in-progress-bg: var(--palette-blue);
-  --task-status-in-progress-text: #ffffff;
+  --task-status-backlog-bg: rgb(139 148 158 / 16%);
+  --task-status-backlog-text: #8b949e;
 
-  --task-status-review-bg: var(--palette-paper);
-  --task-status-review-text: var(--palette-ink);
+  --task-status-todo-bg: rgb(87 157 255 / 16%);
+  --task-status-todo-text: #579dff;
 
-  --task-status-done-bg: var(--palette-rose);
-  --task-status-done-accent: var(--palette-rose);
-  --task-status-done-text: #ffffff;
+  --task-status-in-progress-bg: rgb(154 209 75 / 16%);
+  --task-status-in-progress-text: #9ad14b;
 
-  --task-status-canceled-bg: rgb(216 49 91 / 18%);
-  --task-status-canceled-text: #f089a1;
+  --task-status-review-bg: rgb(192 132 252 / 16%);
+  --task-status-review-text: #c084fc;
+
+  --task-status-done-bg: rgb(34 197 94 / 16%);
+  --task-status-done-accent: #22c55e;
+  --task-status-done-text: #22c55e;
+
+  --task-status-canceled-bg: rgb(239 68 68 / 16%);
+  --task-status-canceled-text: #ef4444;
 
   /* Task Priority */
   --priority-low-bg: rgb(62 146 204 / 22%);

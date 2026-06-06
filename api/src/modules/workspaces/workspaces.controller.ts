@@ -110,6 +110,19 @@ export class WorkspacesController {
 
   @UseGuards(
     JWTAuthGuard,
+    WorkspaceRoleGuard([
+      WorkspaceRole.Owner,
+      WorkspaceRole.Admin,
+      WorkspaceRole.Owner,
+    ]),
+  )
+  @Get(':workspaceSlug/members')
+  async getWorkspaceMembers(@Param('workspaceSlug') workspaceSlug: string) {
+    return await this.workspacesService.getWorkspaceMembers(workspaceSlug);
+  }
+
+  @UseGuards(
+    JWTAuthGuard,
     WorkspaceRoleGuard([WorkspaceRole.Owner, WorkspaceRole.Admin]),
   )
   @Post(':workspaceSlug/invites')
@@ -119,10 +132,19 @@ export class WorkspacesController {
     @Body() payload: InviteByEmailsDto,
   ) {
     return await this.workspacesService.inviteByEmails(
-      'a3ea9f8d-0353-4e4a-9ccc-ff84db15cc49',
+      user.id,
       workspaceSlug,
       payload,
     );
+  }
+
+  @UseGuards(
+    JWTAuthGuard,
+    WorkspaceRoleGuard([WorkspaceRole.Owner, WorkspaceRole.Admin]),
+  )
+  @Get(':workspaceSlug/invites')
+  async getWorkspaceInvites(@Param('workspaceSlug') workspaceSlug: string) {
+    return await this.workspacesService.getWorkspaceInvites(workspaceSlug);
   }
 
   @UseGuards(
@@ -159,6 +181,16 @@ export class WorkspacesController {
     @Param('projectSlug') pjSlug: string,
   ) {
     return await this.projectsService.getProjectBySlug(pjSlug, wsSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @UseInterceptors(CurrentUserProjectPermissionsInterceptor)
+  @Get(':workspaceSlug/projects/:projectSlug/summary')
+  async getProjectSummary(
+    @Param('workspaceSlug') wsSlug: string,
+    @Param('projectSlug') pjSlug: string,
+  ) {
+    return await this.projectsService.getProjectSummary(pjSlug, wsSlug);
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(TASK_READ_ROLES))

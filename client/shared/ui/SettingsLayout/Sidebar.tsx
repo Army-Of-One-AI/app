@@ -151,7 +151,7 @@ export default function Sidebar() {
           Back to workspace
         </Link>
 
-        <div className="mb-5 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+        <div className="mb-5 rounded-xl bg-[var(--card)] p-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary)] text-sm font-semibold text-white">
               {workspaceInitial}

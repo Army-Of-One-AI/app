@@ -14,7 +14,7 @@ type Props = {
   items: Option[];
   searchable?: boolean;
   selectedValue?: string | number;
-  onItemClicked: (value: string | number) => void;
+  onItemClicked: (value: string | number | undefined) => void;
   className?: HTMLAttributes<HTMLDivElement>["className"];
   placeholder?: string;
   showAllOption?: boolean;
@@ -89,7 +89,7 @@ export default function Select({
 
   const handleSelect = (value: string | number) => {
     if (showAllOption && value === ALL_VALUE) {
-      onItemClicked("");
+      onItemClicked(undefined);
     } else {
       onItemClicked(value);
     }

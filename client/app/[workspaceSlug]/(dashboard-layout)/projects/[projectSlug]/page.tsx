@@ -1,32 +1,68 @@
 "use client";
 
 import useGetProjectDetailsBySlug from "@/features/projects/hooks/useGetProjectDetailsBySlug";
+import useGetProjectSummary from "@/features/projects/hooks/useGetProjectSummary";
 import useSlugs from "@/shared/hooks/useSlugs";
-import { classNames, projectStatusColors } from "@/shared/styles/classNames";
-import { parseRichText } from "@/shared/utils/helpers";
+import { classNames, taskStatusConfig } from "@/shared/styles/classNames";
+import { TaskStatus } from "@/shared/types/enums";
+import { formatDate } from "@/shared/utils/helpers";
 import {
   CalendarDays,
   CheckCircle2,
-  Clock,
-  Hash,
+  ChevronRight,
+  ExternalLink,
   Loader2,
   Plus,
+  SquareCheck,
+  Workflow,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 
-function formatDate(value: string | null) {
-  if (!value) return "Not set";
+const TASK_STATUS_ORDER: TaskStatus[] = [
+  "Backlog",
+  "Todo",
+  "In_Progress",
+  "Review",
+  "Done",
+  "Canceled",
+];
 
-  return new Intl.DateTimeFormat("en", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+const TASK_STATUS_CHART_COLORS: Record<TaskStatus, string> = {
+  Backlog: taskStatusConfig.Backlog.text,
+  Todo: taskStatusConfig.Todo.text,
+  In_Progress: taskStatusConfig.In_Progress.text,
+  Review: taskStatusConfig.Review.text,
+  Done: taskStatusConfig.Done.text,
+  Canceled: taskStatusConfig.Canceled.text,
+};
+
+function buildConicGradient(items: { status: TaskStatus; count: number }[]) {
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  if (total === 0) return "var(--secondary)";
+
+  let current = 0;
+
+  return items
+    .map((item) => {
+      const start = current;
+      const end = current + (item.count / total) * 100;
+      current = end;
+
+      return `${TASK_STATUS_CHART_COLORS[item.status]} ${start}% ${end}%`;
+    })
+    .join(", ");
 }
 
 export default function ProjectDetailsPage() {
+  const router = useRouter();
   const slugs = useSlugs();
+
   const workspaceSlug = slugs.workspace.slug;
   const projectSlug = slugs.project.slug;
+
+  const { data: projectSummary, isLoading: isSummaryLoading } =
+    useGetProjectSummary(projectSlug, workspaceSlug);
 
   const {
     data: project,
@@ -52,138 +88,96 @@ export default function ProjectDetailsPage() {
     );
   }
 
-  const description = parseRichText(project.description).html;
-
   const members = (project as any).members ?? [];
-  const tasks = (project as any).tasks ?? [];
 
-  const doneTasks = tasks.filter((task: any) => task.status === "Done").length;
-  const totalTasks = tasks.length;
+  const statusCounts = (projectSummary?.statusCounts ?? {}) as Record<
+    TaskStatus,
+    number
+  >;
 
-  const recentTasks = tasks.slice(0, 5);
+  const totalTasks = TASK_STATUS_ORDER.reduce(
+    (sum, status) => sum + Number(statusCounts[status] || 0),
+    0
+  );
+
+  const openTask = (taskId?: string) => {
+    if (!taskId) return;
+
+    router.push(
+      `/${workspaceSlug}/projects/${projectSlug}/board?selectedTask=${taskId}`
+    );
+  };
 
   return (
-    <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1fr)_350px]">
-      <main className="space-y-5">
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                About this project
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                Goal, scope, and current bets
-              </p>
-            </div>
+    <div className="space-y-5 py-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetricCard
+          icon={CheckCircle2}
+          value={projectSummary?.tasksCompletedLast7DaysCount ?? 0}
+          label="Completed"
+          subLabel="Last 7 days"
+          loading={isSummaryLoading}
+        />
 
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                projectStatusColors[project.status]
-              }`}
-            >
-              {project.status}
-            </span>
-          </div>
+        <SummaryMetricCard
+          icon={Workflow}
+          value={projectSummary?.tasksUpdatedLast7DaysCount ?? 0}
+          label="Updated"
+          subLabel="Last 7 days"
+          loading={isSummaryLoading}
+        />
 
-          <div className="mt-5">
-            {description ? (
-              <div
-                className="rich-text text-sm leading-7 text-[var(--text-primary)]"
-                dangerouslySetInnerHTML={{ __html: description }}
-              />
-            ) : (
-              <p className="text-sm leading-7 text-[var(--text-secondary)]">
-                No description has been added for this project yet.
-              </p>
-            )}
-          </div>
+        <SummaryMetricCard
+          icon={SquareCheck}
+          value={projectSummary?.tasksCreatedLast7DaysCount ?? 0}
+          label="Created"
+          subLabel="Last 7 days"
+          loading={isSummaryLoading}
+        />
 
-          <div className="mt-6 divide-y divide-[var(--border)]">
-            <GoalRow
-              checked={Boolean(project.startDate)}
-              text="Project started"
-              value={formatDate(project.startDate)}
-            />
-            <GoalRow
-              checked={Boolean(project.targetDate)}
-              text="Target deadline"
-              value={formatDate(project.targetDate)}
-            />
-            <GoalRow
-              checked={Boolean(project.completedAt)}
-              text="Project completed"
-              value={formatDate(project.completedAt)}
-            />
-          </div>
-        </section>
+        <SummaryMetricCard
+          icon={CalendarDays}
+          value={projectSummary?.tasksDueNext7DaysCount ?? 0}
+          label="Due soon"
+          subLabel="Next 7 days"
+          loading={isSummaryLoading}
+        />
+      </section>
 
-        <section className="grid gap-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm sm:grid-cols-3">
-          <OverviewCard
-            value={`${doneTasks}/${totalTasks || 0}`}
-            label="Tasks done"
-          />
-          <OverviewCard
-            value={formatDate(project.targetDate)}
-            label="Deadline"
-          />
-          <OverviewCard value={project.status} label="Current status" />
-        </section>
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <StatusOverviewCard
+          statusCounts={statusCounts}
+          totalTasks={totalTasks}
+        />
 
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                Recent Tasks
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                {recentTasks.length} of {totalTasks} tasks
-              </p>
-            </div>
+        <RecentActivityCard
+          activities={projectSummary?.recentActivities ?? []}
+          loading={isSummaryLoading}
+          onTaskClick={openTask}
+        />
+      </section>
 
-            <div className="flex gap-2">
-              <button className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--secondary)]">
-                View all
-              </button>
-              <button className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--secondary)]">
-                + New
-              </button>
-            </div>
-          </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_350px]">
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            Project info
+          </h2>
 
           <div className="mt-5 divide-y divide-[var(--border)]">
-            {recentTasks.length > 0 ? (
-              recentTasks.map((task: any) => (
-                <TaskRow
-                  key={task.id}
-                  title={task.title}
-                  subtitle={
-                    task.dueDate
-                      ? `Due ${formatDate(task.dueDate)}`
-                      : "No due date"
-                  }
-                  status={task.status}
-                  avatar={task.assignee?.avatarURL || task.assignee?.avatar}
-                />
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-[var(--border)] py-8 text-center">
-                <p className="text-sm font-medium text-[var(--text-primary)]">
-                  No tasks yet
-                </p>
-                <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                  Create tasks to start tracking project progress.
-                </p>
-              </div>
-            )}
+            <InfoRow label="Name" value={project.name} />
+            <InfoRow label="Status" value={project.status} />
+            <InfoRow label="Started" value={formatDate(project.startDate)} />
+            <InfoRow label="Deadline" value={formatDate(project.targetDate)} />
+            <InfoRow label="Created" value={formatDate(project.createdAt)} />
+            <InfoRow label="Updated" value={formatDate(project.updatedAt)} />
+            <InfoRow label="Slug" value={project.slug} />
           </div>
         </section>
-      </main>
 
-      <aside className="space-y-5">
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              <h2 className="text-base font-semibold text-[var(--text-primary)]">
                 Team
               </h2>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -191,7 +185,7 @@ export default function ProjectDetailsPage() {
               </p>
             </div>
 
-            <button className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+            <button className="rounded-lg border border-[var(--border)] p-2 text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]">
               <Plus className="h-4 w-4" />
             </button>
           </div>
@@ -213,105 +207,389 @@ export default function ProjectDetailsPage() {
             )}
           </div>
         </section>
-
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            Project info
-          </h2>
-
-          <div className="mt-5 divide-y divide-[var(--border)]">
-            <InfoRow label="Name" value={project.name} />
-            <InfoRow label="Status" value={project.status} />
-            <InfoRow label="Started" value={formatDate(project.startDate)} />
-            <InfoRow label="Deadline" value={formatDate(project.targetDate)} />
-            <InfoRow label="Created" value={formatDate(project.createdAt)} />
-            <InfoRow label="Updated" value={formatDate(project.updatedAt)} />
-            <InfoRow label="Slug" value={project.slug} />
-          </div>
-        </section>
-      </aside>
+      </div>
     </div>
   );
 }
 
-function GoalRow({
-  checked,
-  text,
+function SummaryMetricCard({
+  icon: Icon,
   value,
+  label,
+  subLabel,
+  loading,
 }: {
-  checked: boolean;
-  text: string;
-  value: string;
+  icon: any;
+  value: number;
+  label: string;
+  subLabel: string;
+  loading?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 py-3">
-      <div
-        className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-          checked
-            ? "border-[var(--primary)] bg-[var(--primary)]/15 text-[var(--primary)]"
-            : "border-[var(--border)] text-transparent"
-        }`}
-      >
-        <CheckCircle2 className="h-3.5 w-3.5" />
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
+            {loading ? "—" : value}
+          </p>
+          <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+            {label}
+          </p>
+          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+            {subLabel}
+          </p>
+        </div>
+
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--secondary)] text-[var(--text-secondary)]">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusOverviewCard({
+  statusCounts,
+  totalTasks,
+}: {
+  statusCounts: Record<TaskStatus, number>;
+  totalTasks: number;
+}) {
+  return (
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            Status overview
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Snapshot of current work items by status.
+          </p>
+        </div>
+
+        <button className="text-sm font-medium text-[var(--primary)] hover:underline">
+          View all
+        </button>
       </div>
 
-      <p className="min-w-0 flex-1 text-sm font-medium text-[var(--text-primary)]">
-        {text}
-      </p>
+      <div className="mt-6 grid gap-7 md:grid-cols-[260px_1fr]">
+        <StatusDonutChart statusCounts={statusCounts} totalTasks={totalTasks} />
 
-      <p className="text-sm text-[var(--text-secondary)]">{value}</p>
-    </div>
+        <div className="flex flex-col justify-center gap-3">
+          {TASK_STATUS_ORDER.map((status) => {
+            const count = Number(statusCounts[status] || 0);
+            const percent =
+              totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
+
+            return (
+              <StatusLegendRow
+                key={status}
+                status={status}
+                count={count}
+                percent={percent}
+              />
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
 
-function OverviewCard({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="border-r border-[var(--border)] px-2 last:border-r-0 max-sm:border-r-0">
-      <p className="text-2xl font-semibold text-[var(--text-primary)]">
-        {value}
-      </p>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">{label}</p>
-    </div>
-  );
-}
-
-function TaskRow({
-  title,
-  subtitle,
-  status,
-  avatar,
+function StatusDonutChart({
+  statusCounts,
+  totalTasks,
 }: {
-  title: string;
-  subtitle: string;
-  status: string;
-  avatar?: string;
+  statusCounts: Record<TaskStatus, number>;
+  totalTasks: number;
+}) {
+  const items = TASK_STATUS_ORDER.map((status) => ({
+    status,
+    count: Number(statusCounts[status] || 0),
+  })).filter((item) => item.count > 0);
+
+  const gradient = buildConicGradient(items);
+
+  return (
+    <div className="flex items-center justify-center">
+      <div
+        className="relative h-52 w-52 rounded-full shadow-inner"
+        style={{ background: `conic-gradient(${gradient})` }}
+      >
+        <div className="absolute inset-6 flex flex-col items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)]">
+          <p className="text-3xl font-semibold text-[var(--text-primary)]">
+            {totalTasks}
+          </p>
+          <p className="mt-1 text-sm font-medium text-[var(--text-secondary)]">
+            Total tasks
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusLegendRow({
+  status,
+  count,
+  percent,
+}: {
+  status: TaskStatus;
+  count: number;
+  percent: number;
+}) {
+  const config = taskStatusConfig[status];
+
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl px-2 py-1.5 hover:bg-[var(--secondary)]">
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: config.text }}
+        />
+        <span className="truncate text-sm font-medium text-[var(--text-primary)]">
+          {config.label}
+        </span>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2 text-sm">
+        <span className="font-semibold text-[var(--text-primary)]">
+          {count}
+        </span>
+        <span className="text-[var(--text-secondary)]">{percent}%</span>
+      </div>
+    </div>
+  );
+}
+
+function RecentActivityCard({
+  activities,
+  loading,
+  onTaskClick,
+}: {
+  activities: any[];
+  loading?: boolean;
+  onTaskClick: (taskId?: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 py-4">
-      <div className="h-4 w-4 rounded border border-[var(--border)]" />
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            Recent activity
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Latest task changes in this project.
+          </p>
+        </div>
+
+        <button className="rounded-lg border border-[var(--border)] p-2 text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]">
+          <ExternalLink className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-5 max-h-[330px] space-y-4 overflow-y-auto pr-2">
+        {loading ? (
+          <p className="text-sm text-[var(--text-secondary)]">
+            Loading activities...
+          </p>
+        ) : activities.length > 0 ? (
+          activities.map((activity) => (
+            <ActivityRow
+              key={activity.id}
+              activity={activity}
+              onTaskClick={onTaskClick}
+            />
+          ))
+        ) : (
+          <div className="rounded-xl border border-dashed border-[var(--border)] py-8 text-center">
+            <p className="text-sm font-medium text-[var(--text-primary)]">
+              No recent activity
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              Task updates will appear here.
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ActivityRow({
+  activity,
+  onTaskClick,
+}: {
+  activity: any;
+  onTaskClick: (taskId?: string) => void;
+}) {
+  const actorName = activity.actor?.fullName || "Someone";
+  const avatar = activity.actor?.avatarURL;
+  const initial = actorName.slice(0, 2).toUpperCase();
+
+  return (
+    <div className="group flex gap-3 rounded-xl p-2 transition hover:bg-[var(--secondary)]">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--primary)]/15 text-xs font-bold text-[var(--primary)]">
+        {avatar ? (
+          <img
+            src={avatar}
+            alt={actorName}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          initial
+        )}
+      </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
-          {title}
-        </p>
-        <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-          {subtitle}
+        <ActivityContent activity={activity} onTaskClick={onTaskClick} />
+
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          {formatRelativeTime(activity.createdAt)}
         </p>
       </div>
-
-      <span className="text-xs font-semibold text-[var(--text-primary)]">
-        {status}
-      </span>
-
-      {avatar && (
-        <img
-          src={avatar}
-          alt=""
-          className="h-7 w-7 rounded-full object-cover"
-        />
-      )}
     </div>
   );
+}
+
+function ActivityContent({
+  activity,
+  onTaskClick,
+}: {
+  activity: any;
+  onTaskClick: (taskId?: string) => void;
+}) {
+  const actorName = activity.actor?.fullName || "Someone";
+  const before = activity.metadata?.before;
+  const after = activity.metadata?.after;
+  const task = activity.task;
+  const taskTitle = task?.title ?? "Unknown task";
+
+  if (activity.activity === "STATUS_CHANGED") {
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          <span className="font-semibold text-[var(--text-primary)]">
+            {actorName}
+          </span>
+          <span className="text-[var(--text-secondary)]">
+            changed status on
+          </span>
+          <TaskBadge taskId={task?.id} onClick={onTaskClick}>
+            {taskTitle}
+          </TaskBadge>
+          <StatusPill status={task?.status} />
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <StatusPill status={before} />
+          <ChevronRight className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
+          <StatusPill status={after} />
+        </div>
+      </>
+    );
+  }
+
+  if (activity.activity === "DUE_DATE_CHANGED") {
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          <span className="font-semibold text-[var(--text-primary)]">
+            {actorName}
+          </span>
+          <span className="text-[var(--text-secondary)]">
+            changed due date on
+          </span>
+          <TaskBadge taskId={task?.id} onClick={onTaskClick}>
+            {taskTitle}
+          </TaskBadge>
+          <StatusPill status={task?.status} />
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <ActivityBadge>{before ? formatDate(before) : "None"}</ActivityBadge>
+          <ChevronRight className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
+          <ActivityBadge>{after ? formatDate(after) : "None"}</ActivityBadge>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-sm">
+      <span className="font-semibold text-[var(--text-primary)]">
+        {actorName}
+      </span>
+      <span className="text-[var(--text-secondary)]">
+        updated {activity.activity?.replaceAll("_", " ").toLowerCase()}
+      </span>
+      <TaskBadge taskId={task?.id} onClick={onTaskClick}>
+        {taskTitle}
+      </TaskBadge>
+      <StatusPill status={task?.status} />
+    </div>
+  );
+}
+
+function TaskBadge({
+  children,
+  taskId,
+  onClick,
+}: {
+  children: ReactNode;
+  taskId?: string;
+  onClick: (taskId?: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(taskId)}
+      disabled={!taskId}
+      className="inline-flex max-w-[180px] items-center truncate rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-1.5 py-0.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary)]/15 disabled:cursor-default disabled:opacity-70"
+    >
+      {children}
+    </button>
+  );
+}
+
+function StatusPill({ status }: { status?: TaskStatus | null }) {
+  if (!status || !taskStatusConfig[status]) return null;
+
+  const config = taskStatusConfig[status];
+
+  return (
+    <span
+      className="inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+      style={{
+        backgroundColor: config.bg,
+        color: config.text,
+      }}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+function ActivityBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex rounded-md border border-[var(--border)] bg-[var(--secondary)] px-1.5 py-0.5 text-xs font-medium text-[var(--text-primary)]">
+      {children}
+    </span>
+  );
+}
+
+function formatRelativeTime(value: string) {
+  const date = new Date(value).getTime();
+  const diff = Date.now() - date;
+
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
 }
 
 function MemberRow({
@@ -327,7 +605,7 @@ function MemberRow({
 
   return (
     <div className="flex items-center gap-3 py-3">
-      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[var(--primary)]/15 text-sm font-semibold text-[var(--primary)]">
+      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[var(--secondary)] text-sm font-semibold text-[var(--text-primary)]">
         {avatar ? (
           <img src={avatar} alt={name} className="h-full w-full object-cover" />
         ) : (

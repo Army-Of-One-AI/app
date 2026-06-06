@@ -161,8 +161,17 @@ export default function SettingsWorkspacePage() {
 
   return (
     <>
-      <main className="w-full max-w-3xl px-10 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Workspace</h1>
+      <main className="w-full max-w-5xl px-10 py-10">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-(--text-primary)">
+            Workspace
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-(--text-secondary)">
+            Manage your workspace name, branding, and settings that define how
+            your team collaborates.
+          </p>
+        </div>
 
         <section className="mt-8 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
           <SettingRow label="Logo" description="Recommended size is 256x256px">

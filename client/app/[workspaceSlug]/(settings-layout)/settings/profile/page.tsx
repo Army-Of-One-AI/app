@@ -185,8 +185,17 @@ export default function SettingsProfilePage() {
 
   return (
     <>
-      <main className="w-full max-w-3xl px-10 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+      <main className="w-full max-w-5xl px-10 py-10">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-(--text-primary)">
+            Profile
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-(--text-secondary)">
+            Update your personal information, avatar, and account details that
+            are visible to other workspace members.
+          </p>
+        </div>
 
         <section className="mt-8 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
           <SettingRow

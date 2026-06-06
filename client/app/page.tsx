@@ -30,7 +30,7 @@ export default function HomePage() {
         router.push(`/${userInfo!.workspaces[0].slug}/projects`);
       }
     } else {
-      router.push(`/onboarding`);
+      router.push(`/new-workspace`);
     }
   }, [userInfo, isAuthenticated, router, isLoading]);
 

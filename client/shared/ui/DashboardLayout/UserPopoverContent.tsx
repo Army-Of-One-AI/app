@@ -37,9 +37,13 @@ export default function UserPopoverContent({
         Settings
       </Link>
 
-      <button type="button" className={itemClass}>
+      <Link
+        href={`/${workspace.slug}/settings/members`}
+        type="button"
+        className={itemClass}
+      >
         Invite and manage members
-      </button>
+      </Link>
 
       <div className={`-mx-1.5 my-1.5 border-t ${classNames.border}`} />
 
