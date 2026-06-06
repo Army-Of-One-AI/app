@@ -108,10 +108,10 @@ export class WorkspacesController {
     return membership;
   }
 
-  // @UseGuards(
-  //   JWTAuthGuard,
-  //   WorkspaceRoleGuard([WorkspaceRole.Owner, WorkspaceRole.Admin]),
-  // )
+  @UseGuards(
+    JWTAuthGuard,
+    WorkspaceRoleGuard([WorkspaceRole.Owner, WorkspaceRole.Admin]),
+  )
   @Post(':workspaceSlug/invites')
   async inviteByEmails(
     @CurrentUser() user: { id: string },

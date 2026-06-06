@@ -6,10 +6,17 @@ import { ProjectsModule } from '../projects/projects.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { DocumentsModule } from '../documents/documents.module';
+import { EmailsModule } from '../emails/emails.module';
 
 @Module({
   controllers: [WorkspacesController],
-  imports: [ProjectsModule, TasksModule, PermissionsModule, DocumentsModule],
+  imports: [
+    ProjectsModule,
+    TasksModule,
+    PermissionsModule,
+    DocumentsModule,
+    EmailsModule,
+  ],
   providers: [WorkspacesService, PrismaService],
   exports: [WorkspacesService],
 })
