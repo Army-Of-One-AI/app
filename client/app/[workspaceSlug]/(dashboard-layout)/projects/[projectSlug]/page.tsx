@@ -87,7 +87,7 @@ export default function ProjectOverviewPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-(--background) px-6 py-6 h-full">
       <section className={`${sectionClass} p-6`}>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>

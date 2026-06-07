@@ -320,7 +320,7 @@ export default function ProjectBoardPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-5 py-4">
+    <div className="flex h-full flex-col gap-5 p-6 bg-(--background)">
       <div className="flex flex-wrap items-center gap-3">
         <SearchBar
           value={search}

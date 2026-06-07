@@ -46,7 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const currentPage = segments[3];
 
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 h-full px-2 pt-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1 text-sm px-4">
           {!currentPage ? (
@@ -105,7 +105,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Popover>
         </div>
 
-        <nav className="flex items-center gap-1 border-b border-[var(--border)] px-4 py-2">
+        <nav className="flex items-center gap-1 border-b border-[var(--border)] px-4 pt-2">
           {projectNavItems.map((item) => {
             const href = `${projectBaseUrl}${item.href}`;
 
@@ -127,7 +127,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   }
                 `}
               >
-                {item.label}
+                <div
+                  className={`mb-2 transition-all text-md ${
+                    isActive
+                      ? "text-[var(--primary)]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  {item.label}
+                </div>
+
+                {!isActive && (
+                  <span className="absolute bottom-0 left-0 h-[2px] w-full bg-transparent" />
+                )}
 
                 {isActive && (
                   <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[var(--primary)]" />

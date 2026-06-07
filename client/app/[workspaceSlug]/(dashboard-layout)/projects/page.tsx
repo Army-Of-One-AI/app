@@ -97,7 +97,7 @@ export default function ProjectsPage() {
     <PageContent
       title="Projects"
       customHeader={
-        <div className="flex w-full flex-col gap-4 px-2">
+        <div className="flex w-full flex-col gap-4 p-6">
           <div className="flex w-full items-center justify-between gap-4">
             <div className="flex items-center gap-2 overflow-x-auto">
               <FilterPill active={status === ""} onClick={() => setStatus("")}>

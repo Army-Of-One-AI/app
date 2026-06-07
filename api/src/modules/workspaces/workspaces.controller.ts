@@ -118,7 +118,7 @@ export class WorkspacesController {
     WorkspaceRoleGuard([
       WorkspaceRole.Owner,
       WorkspaceRole.Admin,
-      WorkspaceRole.Owner,
+      WorkspaceRole.Member,
     ]),
   )
   @Get(':workspaceSlug/members')

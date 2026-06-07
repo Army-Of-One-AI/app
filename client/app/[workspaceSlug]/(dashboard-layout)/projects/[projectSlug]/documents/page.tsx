@@ -91,7 +91,7 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="space-y-4 bg-[var(--background)] p-4 text-[var(--text-primary)]">
+    <div className="space-y-4 bg-[var(--background)] min-h-full py-6 px-6 text-[var(--text-primary)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-primary)]">
