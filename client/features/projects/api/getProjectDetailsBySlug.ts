@@ -9,5 +9,5 @@ export const getProjectDetailsBySlug = async (
     `/workspaces/${workspaceSlug}/projects/${projectSlug}`
   );
 
-  return response.data as Omit<Project, "members" | "taskCount">;
+  return response.data as Omit<Project, "taskCount">;
 };

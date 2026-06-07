@@ -41,6 +41,7 @@ import Popover from "@/shared/ui/Popover";
 import BoardFilters, { UNASSIGNED_MEMBER_ID } from "./components/BoardFilters";
 import useSlugs from "@/shared/hooks/useSlugs";
 import SearchBar from "@/shared/ui/SearchBar";
+import SkeletonLoading from "./components/SkeletonLoading";
 
 const columns = [
   { key: TaskStatus.Backlog, title: "Backlog" },
@@ -305,11 +306,7 @@ export default function ProjectBoardPage() {
   }, [isOpenModal]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-[var(--text-secondary)]">
-        Loading tasks...
-      </div>
-    );
+    return <SkeletonLoading />;
   }
 
   if (error) {
@@ -569,7 +566,7 @@ function KanbanColumn({
             type="button"
             onClick={() => onCreateTask(id)}
             className="sticky top-0  flex h-10 w-full items-center justify-center cursor-pointer
-            shadow-lg gap-2 rounded-xl border border-dashed  bg-(--background) z-100
+            shadow-lg gap-2 rounded-xl border border-dashed  bg-(--background)
             border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
             style={{ borderColor: statusStyle.bg }}
           >

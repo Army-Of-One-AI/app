@@ -1,5 +1,6 @@
 import { apiClient } from "@/shared/api/apiClient";
 import { useQuery } from "@tanstack/react-query";
+import { GetProjectSummaryResponse } from "../types";
 
 export default function useGetProjectSummary(
   projectSlug: string,
@@ -12,7 +13,7 @@ export default function useGetProjectSummary(
       const resp = await apiClient.get(
         `/workspaces/${workspaceSlug}/projects/${projectSlug}/summary`
       );
-      return resp.data;
+      return resp.data as GetProjectSummaryResponse;
     },
   });
 }

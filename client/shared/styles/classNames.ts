@@ -105,13 +105,18 @@ export const projectStatusColors = {
 
 export const taskPriorityColors = {
   Low: "bg-[var(--priority-low-bg)] text-[var(--priority-low-text)]",
-
   Medium: "bg-[var(--priority-medium-bg)] text-[var(--priority-medium-text)]",
-
   High: "bg-[var(--priority-high-bg)] text-[var(--priority-high-text)]",
-
   Urgent:
     "bg-[var(--priority-critical-bg)] text-[var(--priority-critical-text)]",
+} as const;
+
+export const taskPriorityChartColors = {
+  Low: "var(--priority-low-text)",
+  Medium: "var(--priority-medium-text)",
+  High: "var(--priority-high-text)",
+  Urgent: "var(--priority-critical-text)",
+  None: "var(--text-tertiary)",
 } as const;
 
 export const taskStatusConfig: Record<

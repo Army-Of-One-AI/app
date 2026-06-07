@@ -95,3 +95,45 @@ export const TaskActivity = {
 } as const;
 
 export type TaskActivity = (typeof TaskActivity)[keyof typeof TaskActivity];
+
+export const TASK_STATUS_ORDER: TaskStatus[] = [
+  "Backlog",
+  "Todo",
+  "In_Progress",
+  "Review",
+  "Done",
+  "Canceled",
+];
+
+export const taskPriorityConfig: Record<
+  TaskPriority,
+  {
+    label: string;
+    text: string;
+    bg: string;
+  }
+> = {
+  Low: {
+    label: "Low",
+    bg: "var(--priority-low-bg)",
+    text: "var(--priority-low-text)",
+  },
+
+  Medium: {
+    label: "Medium",
+    bg: "var(--priority-medium-bg)",
+    text: "var(--priority-medium-text)",
+  },
+
+  High: {
+    label: "High",
+    bg: "var(--priority-high-bg)",
+    text: "var(--priority-high-text)",
+  },
+
+  Urgent: {
+    label: "Urgent",
+    bg: "var(--priority-critical-bg)",
+    text: "var(--priority-critical-text)",
+  },
+} as const;

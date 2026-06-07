@@ -14,6 +14,7 @@ export type CurrentProjectUser = {
       canUpdateTask: boolean;
       canDeleteTask: boolean;
       canAssignTask: boolean;
+      canArchiveTask: boolean;
       canUpdateTaskStatus: boolean;
     };
   };

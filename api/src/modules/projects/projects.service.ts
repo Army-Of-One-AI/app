@@ -289,6 +289,8 @@ export class ProjectsService {
       tasksCompletedLast7DaysCount,
       tasksDueNext7DaysCount,
       tasksByStatus,
+      tasksByPriority,
+      tasksByAsignee,
       recentActivities,
     ] = await this.prisma.$transaction([
       this.prisma.task.count({
@@ -357,6 +359,36 @@ export class ProjectsService {
         },
       }),
 
+      this.prisma.task.groupBy({
+        by: ['priority'],
+        where: {
+          project_id: projectId,
+          archived_at: null,
+          deleted_at: null,
+          parent_task_id: null,
+        },
+        _count: true,
+        orderBy: {
+          priority: 'desc',
+        },
+      }),
+
+      this.prisma.task.groupBy({
+        by: ['assignee_id'],
+        where: {
+          project_id: projectId,
+          archived_at: null,
+          deleted_at: null,
+          parent_task_id: null,
+        },
+        _count: true,
+        orderBy: {
+          _count: {
+            creator_id: 'desc',
+          },
+        },
+      }),
+
       this.prisma.taskActivityLog.findMany({
         where: {
           project_id: project.id,
@@ -391,8 +423,72 @@ export class ProjectsService {
 
     const taskMap = new Map(tasks.map((task) => [task.id, task]));
 
+    const assigneeIds = tasksByAsignee
+      .filter((t) => t.assignee_id !== null)
+      .map((t) => t.assignee_id) as string[];
+
+    const assignees =
+      assigneeIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: {
+              OR: [
+                {
+                  id: {
+                    in: assigneeIds,
+                  },
+                },
+              ],
+            },
+            select: {
+              id: true,
+              username: true,
+              userInfo: {
+                select: {
+                  full_name: true,
+                  avatar_url: true,
+                },
+              },
+            },
+          })
+        : [];
+
+    const tasksByAssigneeWithUser: {
+      id: string;
+      fullName: string;
+      username: string;
+      tasksCount: number;
+      avatarURL: string;
+    }[] = [];
+
+    tasksByAsignee.forEach((t) => {
+      if (t.assignee_id === null) {
+        tasksByAssigneeWithUser.push({
+          id: '__unassigned',
+          fullName: '__unassigned',
+          username: '__unassigned',
+          tasksCount: t._count as number,
+          avatarURL: '',
+        });
+      } else {
+        const user = assignees.find((a) => a.id === t.assignee_id);
+        if (!user) return;
+
+        tasksByAssigneeWithUser.push({
+          id: user.id,
+          fullName: user.userInfo?.full_name || '',
+          username: user.username,
+          avatarURL: user.userInfo?.avatar_url || '',
+          tasksCount: t._count as number,
+        });
+      }
+    });
+
     const statusCounts = Object.fromEntries(
       tasksByStatus.map((item) => [item.status, item._count]),
+    );
+
+    const priorityCounts = Object.fromEntries(
+      tasksByPriority.map((item) => [item.priority, item._count]),
     );
 
     return {
@@ -400,7 +496,9 @@ export class ProjectsService {
       tasksUpdatedLast7DaysCount,
       tasksCompletedLast7DaysCount,
       tasksDueNext7DaysCount,
+      tasksByAssignee: tasksByAssigneeWithUser,
       statusCounts,
+      priorityCounts,
       recentActivities: recentActivities.map((activity) => ({
         id: activity.id,
         activity: activity.activity,

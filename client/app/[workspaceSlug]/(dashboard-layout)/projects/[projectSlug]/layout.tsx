@@ -1,17 +1,24 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Ellipsis } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import PageContent from "@/shared/ui/DashboardLayout/PageContent";
 import useSlugs from "@/shared/hooks/useSlugs";
+import Popover from "@/shared/ui/Popover";
+import ProjectActions from "./components/ProjectActions";
 
 const projectNavItems = [
   {
     label: "Overview",
     href: "",
+  },
+  {
+    label: "Summary",
+    href: "/summary",
   },
   {
     label: "Board",
@@ -31,6 +38,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const projectSlug = project.slug;
 
   const projectBaseUrl = `/${workspaceSlug}/projects/${projectSlug}`;
+
+  const [isOpenPopover, setOpenPopover] = useState(false);
 
   const customHeader = useMemo(() => {
     const segments = pathname.split("/").filter(Boolean);
@@ -78,6 +87,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </span>
             </>
           )}
+
+          <Popover
+            position="left"
+            onClose={() => {
+              setOpenPopover(false);
+            }}
+            isOpen={isOpenPopover}
+            content={<ProjectActions />}
+          >
+            <button
+              onClick={() => setOpenPopover((curr) => !curr)}
+              className="h-full flex items-center px-2 cursor-pointer"
+            >
+              <Ellipsis size={16} />
+            </button>
+          </Popover>
         </div>
 
         <nav className="flex items-center gap-1 border-b border-[var(--border)] px-4 py-2">
@@ -113,7 +138,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       </div>
     );
-  }, [pathname, workspaceSlug, projectSlug, projectBaseUrl]);
+  }, [pathname, workspaceSlug, projectSlug, projectBaseUrl, isOpenPopover]);
 
   return (
     <PageContent title="Project Details" customHeader={customHeader}>
