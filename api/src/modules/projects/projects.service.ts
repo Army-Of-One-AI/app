@@ -4,6 +4,7 @@ import FindProjectsDto from './dto/find-projects.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { Prisma } from 'generated/prisma/browser';
 import { DateTime } from 'luxon';
+import AddMemberToProject from '../workspaces/dto/add-member-to-project';
 
 @Injectable()
 export class ProjectsService {
@@ -512,5 +513,73 @@ export class ProjectsService {
         },
       })),
     };
+  }
+
+  async addMemberToProject(
+    projectSlug: string,
+    workspaceSlug: string,
+    payload: AddMemberToProject,
+  ) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        slug: projectSlug,
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return this.prisma.projectMember.create({
+      data: {
+        project_id: project.id,
+        member_id: payload.targetUserId,
+        ...(payload.role ? { role: payload.role } : { role: 'Member' }),
+      },
+    });
+  }
+
+  async removeMemberFromProject(
+    projectSlug: string,
+    workspaceSlug: string,
+    targetUserId: string,
+  ) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        slug: projectSlug,
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const member = await this.prisma.projectMember.findUnique({
+      where: {
+        project_id_member_id: {
+          project_id: project.id,
+          member_id: targetUserId,
+        },
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('User is not a member of this project');
+    }
+
+    await this.prisma.projectMember.delete({
+      where: {
+        project_id_member_id: {
+          project_id: project.id,
+          member_id: targetUserId,
+        },
+      },
+    });
   }
 }

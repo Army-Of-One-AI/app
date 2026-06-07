@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -27,6 +29,7 @@ import { CreateTaskDto } from '../tasks/dto/create-task.dto';
 import { CurrentUserProjectPermissionsInterceptor } from 'src/shared/interceptors/current-user-project-permissions.interceptor';
 import {
   PROJECT_CREATE_ROLES,
+  PROJECT_MEMBER_MANAGE_ROLES,
   PROJECT_READ_ROLES,
   TASK_ARCHIVE_ROLES,
   TASK_CREATE_ROLES,
@@ -40,6 +43,8 @@ import findProjectDocumentsDto from '../documents/dto/find-project-documents.dto
 import CreateDocumentDto from '../documents/dto/create-document.dto';
 import GetTaskActivitiesDto from './dto/get-task-activities.dto';
 import InviteByEmailsDto from './dto/invite-by-emails.dto';
+import AddMemberToProject from './dto/add-member-to-project';
+
 @Controller('workspaces')
 export class WorkspacesController {
   constructor(
@@ -291,6 +296,35 @@ export class WorkspacesController {
     @Param('projectSlug') pjSlug: string,
   ) {
     return await this.projectsService.getProjectMembers(pjSlug, wsSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_MEMBER_MANAGE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/members')
+  async addMemberToProject(
+    @Param('projectSlug') pjSlug: string,
+    @Param('workspaceSlug') wsSlug: string,
+    @Body() payload: AddMemberToProject,
+  ) {
+    return await this.projectsService.addMemberToProject(
+      pjSlug,
+      wsSlug,
+      payload,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_MEMBER_MANAGE_ROLES))
+  @Delete(':workspaceSlug/projects/:projectSlug/members/:memberId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeMemberFromProject(
+    @Param('projectSlug') projectSlug: string,
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('memberId') memberId: string,
+  ) {
+    await this.projectsService.removeMemberFromProject(
+      projectSlug,
+      workspaceSlug,
+      memberId,
+    );
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))

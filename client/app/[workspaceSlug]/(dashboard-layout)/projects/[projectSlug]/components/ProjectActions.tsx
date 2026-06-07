@@ -1,6 +1,8 @@
 "use client";
 
+import useAddMemberToProject from "@/features/projects/hooks/useAddMemberToProject";
 import useGetProjectDetailsBySlug from "@/features/projects/hooks/useGetProjectDetailsBySlug";
+import useRemoveMemberFromProject from "@/features/projects/hooks/useRemoveMemberFromProject";
 import useWorkspaceMembers from "@/features/workspaces/hooks/useWorkspaceMembers";
 import useSlugs from "@/shared/hooks/useSlugs";
 import { classNames } from "@/shared/styles/classNames";
@@ -45,6 +47,9 @@ export default function ProjectActions() {
     slugs.workspace.slug
   );
 
+  const { mutateAsync: addMemberToProject, isPending: isAddingMember } = useAddMemberToProject();
+  const { mutateAsync: removeMemberFromProject, isPending: isRemovingMember } = useRemoveMemberFromProject();
+
   const { data: workspaceMembers, isLoading: isLoadingWSMembers } =
     useWorkspaceMembers(slugs.workspace.slug);
 
@@ -85,9 +90,8 @@ export default function ProjectActions() {
 
         <ChevronRight
           size={16}
-          className={`transition-transform ${
-            isOpenAddMember ? "rotate-180" : "group-hover:translate-x-0.5"
-          }`}
+          className={`transition-transform ${isOpenAddMember ? "rotate-180" : "group-hover:translate-x-0.5"
+            }`}
         />
 
         <AnimatePresence>
@@ -147,8 +151,20 @@ export default function ProjectActions() {
                     return (
                       <div
                         key={member.id}
-                        onClick={() => {
-                          // TODO: call add/remove project member mutation here
+                        onClick={async () => {
+                          if (!isAdded) {
+                            await addMemberToProject({
+                              workspaceSlug: slugs.workspace.slug,
+                              projectSlug: slugs.project.slug,
+                              targetUserId: member.id
+                            })
+                          } else {
+                            await removeMemberFromProject({
+                              workspaceSlug: slugs.workspace.slug,
+                              projectSlug: slugs.project.slug,
+                              targetUserId: member.id
+                            })
+                          }
                         }}
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all hover:bg-(--border)"
                       >
@@ -168,11 +184,10 @@ export default function ProjectActions() {
                         </div>
 
                         <span
-                          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${
-                            isAdded
-                              ? "border-emerald-500 bg-emerald-500 text-white"
-                              : "border-(--border) bg-transparent"
-                          }`}
+                          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${isAdded
+                            ? "border-emerald-500 bg-emerald-500 text-white"
+                            : "border-(--border) bg-transparent"
+                            }`}
                         >
                           {isAdded && <Check size={13} strokeWidth={3} />}
                         </span>
