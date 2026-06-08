@@ -69,7 +69,7 @@ export default function ModalProvider({
             onClick={(e) =>
               e.target === e.currentTarget && setModalContent(null)
             }
-            className={`fixed inset-0 z-[999] flex items-center justify-center ${classNames.overlay}`}
+            className={`fixed inset-0 z-[999] flex items-center justify-center ${classNames.overlay} backdrop-blur-md`}
           >
             <motion.div
               initial={{
