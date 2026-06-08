@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -87,6 +85,14 @@ enum TaskActivity {
   COMMENT_DELETED
 }
 
+enum InboxItemType {
+  TASK_ASSIGNED
+  PROJECT_ADDED
+  WORKSPACE_INVITED
+  COMMENT_MENTIONED
+  DUE_DATE_CHANGED
+}
+
 model Workspace {
   id String @id @default(uuid())
 
@@ -99,6 +105,7 @@ model Workspace {
   members          WorkspaceMember[]
   lastUsedUsers    User[]
   workspaceInvites WorkspaceInvite[]
+  inboxItems       InboxItem[]
 
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
@@ -139,6 +146,9 @@ model User {
   created_documents       Document[]        @relation(name: "DocumentCreator")
   workspaceMembers        WorkspaceMember[]
   createdWorkspaceInvites WorkspaceInvite[]
+
+  inboxItems     InboxItem[]
+  sentInboxItems InboxItem[] @relation("InboxActor")
 
   lastUsedWorkspace      Workspace? @relation(fields: [last_used_workspace_id], references: [id], onDelete: SetNull)
   last_used_workspace_id String?
@@ -218,9 +228,11 @@ model Project {
   workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   workspace_id String
 
-  members   ProjectMember[]
-  tasks     Task[]
-  documents Document[]
+  members    ProjectMember[]
+  tasks      Task[]
+  documents  Document[]
+  epics      Epic[]
+  inboxItems InboxItem[]
 
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
@@ -281,6 +293,11 @@ model Task {
   parent_task_id String?
 
   sub_tasks Task[] @relation("SubTasks")
+
+  epic    Epic?   @relation(fields: [epic_id], references: [id], onDelete: SetNull)
+  epic_id String?
+
+  inboxItems InboxItem[]
 
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
@@ -358,7 +375,78 @@ model WorkspaceInvite {
   creator    User   @relation(fields: [created_by], references: [id])
   created_by String
 
+  inboxItems InboxItem[]
+
   created_at DateTime @default(now())
 
   @@unique([workspace_id, email])
+  @@index([email])
+  @@index([workspace_id])
+}
+
+model Epic {
+  id String @id @default(uuid())
+
+  title       String
+  description Json?
+  color       String?
+  position    Int     @default(0)
+
+  start_date DateTime?
+  due_date   DateTime?
+
+  archived_at DateTime?
+  deleted_at  DateTime?
+
+  project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  project_id String
+
+  tasks Task[]
+
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  @@index([project_id, deleted_at])
+  @@index([project_id, position])
+}
+
+model InboxItem {
+  id String @id @default(uuid())
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  actor_id String?
+  actor    User?   @relation("InboxActor", fields: [actor_id], references: [id], onDelete: SetNull)
+
+  workspace_id String?
+  workspace    Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
+
+  project_id String?
+  project    Project? @relation(fields: [project_id], references: [id], onDelete: SetNull)
+
+  task_id String?
+  task    Task?   @relation(fields: [task_id], references: [id], onDelete: SetNull)
+
+  invite_id String?
+  invite    WorkspaceInvite? @relation(fields: [invite_id], references: [id], onDelete: SetNull)
+
+  type InboxItemType
+
+  title    String
+  message  String?
+  metadata Json?
+
+  read_at     DateTime?
+  archived_at DateTime?
+
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  @@index([user_id, read_at, created_at(sort: Desc)])
+  @@index([user_id, archived_at, created_at(sort: Desc)])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@index([project_id, created_at(sort: Desc)])
+  @@index([task_id])
+  @@index([invite_id])
 }

@@ -10,6 +10,64 @@ import PrismaService from 'src/shared/services/prisma.service';
 export class InvitationsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getCurrentUserInvitations(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        email: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const invites = await this.prisma.workspaceInvite.findMany({
+      where: {
+        email: user.email,
+        accepted_at: null,
+        revoked_at: null,
+        expires_at: {
+          gte: new Date(),
+        },
+      },
+      include: {
+        creator: {
+          include: {
+            userInfo: true,
+          },
+        },
+        workspace: true,
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+
+    return invites.map((invite) => ({
+      id: invite.id,
+      createdAt: invite.created_at,
+      email: invite.email,
+      acceptedAt: invite.accepted_at,
+      expiresAt: invite.expires_at,
+      revokedAt: invite.revoked_at,
+      creator: {
+        id: invite.creator.id,
+        email: invite.creator.email,
+        fullName: invite.creator.userInfo?.full_name,
+        avatarURL: invite.creator.userInfo?.avatar_url,
+      },
+      workspace: {
+        id: invite.workspace.id,
+        logoURL: invite.workspace.logo_url,
+        name: invite.workspace.name,
+        slug: invite.workspace.slug,
+      },
+    }));
+  }
+
   async getInvitationDetails(userId: string, id: string) {
     const user = await this.prisma.user.findUnique({
       where: {

@@ -21,6 +21,15 @@ export type Document = {
   };
 };
 
+export type DocumentContent = {
+  html: string;
+  plainText: string;
+};
+
+export type DocumentDetails = Document & {
+  content: DocumentContent | null;
+};
+
 export type FindProjectDocumentsResponse = {
   items: Document[];
   pagination: {

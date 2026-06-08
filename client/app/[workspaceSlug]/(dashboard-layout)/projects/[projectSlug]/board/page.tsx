@@ -19,13 +19,28 @@ import {
 } from "@dnd-kit/core";
 import {
   CalendarDays,
+  CheckCircle2,
   CircleDot,
+  Clock3,
   Filter,
   GripVertical,
   Plus,
+  GitBranch,
+  Layers3,
+  ListTodo,
+  type LucideIcon,
+  RotateCcw,
+  Users,
+  X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import CreateTaskModal from "./components/CreateTaskModal";
 import useModal from "@/shared/hooks/useModal";
 import TaskDetailsModal from "./components/TaskDetailsModal";
@@ -38,10 +53,14 @@ import {
   taskStatusConfig,
 } from "@/shared/styles/classNames";
 import Popover from "@/shared/ui/Popover";
-import BoardFilters, { UNASSIGNED_MEMBER_ID } from "./components/BoardFilters";
+import BoardFilters, {
+  UNASSIGNED_EPIC_ID,
+  UNASSIGNED_MEMBER_ID,
+} from "./components/BoardFilters";
 import useSlugs from "@/shared/hooks/useSlugs";
 import SearchBar from "@/shared/ui/SearchBar";
 import SkeletonLoading from "./components/SkeletonLoading";
+import useGetProjectEpics from "@/features/projects/hooks/useGetProjectEpics";
 
 const columns = [
   { key: TaskStatus.Backlog, title: "Backlog" },
@@ -52,8 +71,54 @@ const columns = [
   { key: TaskStatus.Canceled, title: "Canceled" },
 ] as const;
 
+const allStatuses = Object.values(TaskStatus);
+const allPriorities = Object.values(TaskPriority);
+const emptyQueryValue = "__empty__";
+
 type BoardStatus = (typeof columns)[number]["key"];
 type BoardColumn = (typeof columns)[number];
+type FilterChip = {
+  key: string;
+  label: string;
+  onRemove: () => void;
+};
+
+function parseQueryList(value: string | null) {
+  if (value === null) return null;
+  if (value === "" || value === emptyQueryValue) return [];
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function filterValidValues<T extends string>(
+  values: string[] | null,
+  allowedValues: readonly T[]
+) {
+  if (values === null) return null;
+  const allowed = new Set(allowedValues);
+
+  return values.filter((value): value is T => allowed.has(value as T));
+}
+
+function isSameSet(a: readonly string[], b: readonly string[]) {
+  if (a.length !== b.length) return false;
+  const values = new Set(a);
+
+  return b.every((item) => values.has(item));
+}
+
+function serializeFilterSelection(
+  selected: readonly string[],
+  allValues: readonly string[]
+) {
+  if (isSameSet(selected, allValues)) return null;
+  if (selected.length === 0) return emptyQueryValue;
+
+  return selected.join(",");
+}
 
 export default function ProjectBoardPage() {
   const router = useRouter();
@@ -81,19 +146,37 @@ export default function ProjectBoardPage() {
   const createTaskMutation = useCreateTask(workspaceSlug, projectSlug);
   const { mutateAsync: updateTask } = useUpdateTask();
 
+  const { data: epics } = useGetProjectEpics(workspaceSlug, projectSlug);
+
   const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([
-    ...Object.values(TaskStatus),
-  ]);
-  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([
-    ...Object.values(TaskPriority),
-  ]);
+  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>(() => {
+    const values = filterValidValues(
+      parseQueryList(searchParams.get("status")),
+      allStatuses
+    );
+
+    return values ?? [...allStatuses];
+  });
+  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>(
+    () => {
+      const values = filterValidValues(
+        parseQueryList(searchParams.get("priority")),
+        allPriorities
+      );
+
+      return values ?? [...allPriorities];
+    }
+  );
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
   const [selectedReporterIds, setSelectedReporterIds] = useState<string[]>([]);
+  const [selectedEpicIds, setSelectedEpicIds] = useState<string[]>([]);
+  const [hasInitializedMembers, setHasInitializedMembers] = useState(false);
+  const [hasInitializedEpics, setHasInitializedEpics] = useState(false);
 
   const canCreateTask =
     apiTasks?.currentUser.permissions.task.canCreateTask ?? false;
@@ -101,8 +184,26 @@ export default function ProjectBoardPage() {
   const canUpdateTaskStatus =
     apiTasks?.currentUser.permissions.task.canUpdateTaskStatus ?? false;
 
+  const memberIds = useMemo(
+    () => (members ?? []).map((member) => member.id),
+    [members]
+  );
+
+  const allAssigneeIds = useMemo(
+    () => [...memberIds, UNASSIGNED_MEMBER_ID],
+    [memberIds]
+  );
+
+  const epicIds = useMemo(() => (epics ?? []).map((epic) => epic.id), [epics]);
+
+  const allEpicIds = useMemo(
+    () => [...epicIds, UNASSIGNED_EPIC_ID],
+    [epicIds]
+  );
+
   useEffect(() => {
     setMounted(true);
+    setCurrentTime(Date.now());
   }, []);
 
   useEffect(() => {
@@ -124,6 +225,9 @@ export default function ProjectBoardPage() {
     const prioritySet = new Set(selectedPriorities);
     const assigneeSet = new Set(selectedAssigneeIds);
     const reporterSet = new Set(selectedReporterIds);
+    const epicSet = new Set(selectedEpicIds);
+    const memberFiltersReady = (members?.length ?? 0) > 0;
+    const epicFiltersReady = epics !== undefined;
 
     return boardTasks.filter((task) => {
       const matchesSearch =
@@ -134,16 +238,28 @@ export default function ProjectBoardPage() {
         task.creator?.fullName?.toLowerCase().includes(keyword);
 
       const matchesAssignee =
-        assigneeSet.has(task.assignee?.id ?? "") ||
-        (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
+        !memberFiltersReady && selectedAssigneeIds.length === 0
+          ? true
+          : assigneeSet.has(task.assignee?.id ?? "") ||
+            (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
 
-      const matchesReporter = reporterSet.has(task.creator?.id ?? "");
+      const matchesReporter =
+        !memberFiltersReady && selectedReporterIds.length === 0
+          ? true
+          : reporterSet.has(task.creator?.id ?? "");
+
+      const matchesEpic =
+        !epicFiltersReady && selectedEpicIds.length === 0
+          ? true
+          : epicSet.has(task.epic?.id ?? "") ||
+            (!task.epic && epicSet.has(UNASSIGNED_EPIC_ID));
 
       return (
         matchesSearch &&
         prioritySet.has(task.priority) &&
         matchesAssignee &&
-        matchesReporter
+        matchesReporter &&
+        matchesEpic
       );
     });
   }, [
@@ -152,6 +268,9 @@ export default function ProjectBoardPage() {
     selectedPriorities,
     selectedAssigneeIds,
     selectedReporterIds,
+    selectedEpicIds,
+    members,
+    epics,
   ]);
 
   const tasksByStatus = useMemo(() => {
@@ -168,10 +287,213 @@ export default function ProjectBoardPage() {
     return columns.filter((column) => selectedStatuses.includes(column.key));
   }, [selectedStatuses]);
 
+  const visibleTaskCount = useMemo(() => {
+    return filteredTasks.filter((task) => selectedStatuses.includes(task.status))
+      .length;
+  }, [filteredTasks, selectedStatuses]);
+
   const activeTask = useMemo(() => {
     if (!activeTaskId) return null;
     return boardTasks.find((task) => task.id === activeTaskId) ?? null;
   }, [activeTaskId, boardTasks]);
+
+  const boardStats = useMemo(() => {
+    return {
+      total: boardTasks.length,
+      active: boardTasks.filter(
+        (task) =>
+          task.status === TaskStatus.Todo ||
+          task.status === TaskStatus.In_Progress ||
+          task.status === TaskStatus.Review
+      ).length,
+      overdue: boardTasks.filter((task) => {
+        if (!task.dueDate) return false;
+        if (
+          task.status === TaskStatus.Done ||
+          task.status === TaskStatus.Canceled
+        ) {
+          return false;
+        }
+
+        return (
+          currentTime !== null && new Date(task.dueDate).getTime() < currentTime
+        );
+      }).length,
+      done: boardTasks.filter((task) => task.status === TaskStatus.Done).length,
+    };
+  }, [boardTasks, currentTime]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+
+    if (search.trim()) count += 1;
+    if (!isSameSet(selectedStatuses, allStatuses)) count += 1;
+    if (!isSameSet(selectedPriorities, allPriorities)) count += 1;
+    if (
+      hasInitializedMembers &&
+      !isSameSet(selectedAssigneeIds, allAssigneeIds)
+    ) {
+      count += 1;
+    }
+    if (hasInitializedMembers && !isSameSet(selectedReporterIds, memberIds)) {
+      count += 1;
+    }
+    if (hasInitializedEpics && !isSameSet(selectedEpicIds, allEpicIds)) {
+      count += 1;
+    }
+
+    return count;
+  }, [
+    search,
+    hasInitializedMembers,
+    hasInitializedEpics,
+    allAssigneeIds,
+    memberIds,
+    allEpicIds,
+    selectedStatuses,
+    selectedPriorities,
+    selectedAssigneeIds,
+    selectedReporterIds,
+    selectedEpicIds,
+  ]);
+
+  const resetBoardFilters = () => {
+    setSearch("");
+    setSelectedStatuses([...allStatuses]);
+    setSelectedPriorities([...allPriorities]);
+    setSelectedAssigneeIds([...allAssigneeIds]);
+    setSelectedReporterIds([...memberIds]);
+    setSelectedEpicIds([...allEpicIds]);
+  };
+
+  const appliedFilterChips = useMemo<FilterChip[]>(() => {
+    const chips: FilterChip[] = [];
+    const memberById = new Map(
+      (members ?? []).map((member) => [
+        member.id,
+        member.fullName || member.username || member.email,
+      ])
+    );
+    const epicById = new Map((epics ?? []).map((epic) => [epic.id, epic.title]));
+    const summarize = (
+      selected: readonly string[],
+      allValues: readonly string[],
+      getLabel: (value: string) => string
+    ) => {
+      if (isSameSet(selected, allValues)) return null;
+      if (selected.length === 0) return "None";
+      if (selected.length <= 2) return selected.map(getLabel).join(", ");
+
+      return `${selected.length} selected`;
+    };
+
+    if (search.trim()) {
+      chips.push({
+        key: "search",
+        label: `Search: ${search.trim()}`,
+        onRemove: () => setSearch(""),
+      });
+    }
+
+    const statusSummary = summarize(
+      selectedStatuses,
+      allStatuses,
+      (status) => taskStatusConfig[status as TaskStatus].label
+    );
+    if (statusSummary) {
+      chips.push({
+        key: "status",
+        label: `Status: ${statusSummary}`,
+        onRemove: () => setSelectedStatuses([...allStatuses]),
+      });
+    }
+
+    const prioritySummary = summarize(
+      selectedPriorities,
+      allPriorities,
+      (priority) => priority
+    );
+    if (prioritySummary) {
+      chips.push({
+        key: "priority",
+        label: `Priority: ${prioritySummary}`,
+        onRemove: () => setSelectedPriorities([...allPriorities]),
+      });
+    }
+
+    if (hasInitializedMembers) {
+      const assigneeSummary = summarize(
+        selectedAssigneeIds,
+        allAssigneeIds,
+        (assigneeId) =>
+          assigneeId === UNASSIGNED_MEMBER_ID
+            ? "Unassigned"
+            : memberById.get(assigneeId) ?? "Unknown member"
+      );
+      if (assigneeSummary) {
+        chips.push({
+          key: "assignee",
+          label: `Assignee: ${assigneeSummary}`,
+          onRemove: () => setSelectedAssigneeIds([...allAssigneeIds]),
+        });
+      }
+
+      const reporterSummary = summarize(
+        selectedReporterIds,
+        memberIds,
+        (reporterId) => memberById.get(reporterId) ?? "Unknown reporter"
+      );
+      if (reporterSummary) {
+        chips.push({
+          key: "reporter",
+          label: `Reporter: ${reporterSummary}`,
+          onRemove: () => setSelectedReporterIds([...memberIds]),
+        });
+      }
+    }
+
+    if (hasInitializedEpics) {
+      const epicSummary = summarize(
+        selectedEpicIds,
+        allEpicIds,
+        (epicId) =>
+          epicId === UNASSIGNED_EPIC_ID
+            ? "No epic"
+            : epicById.get(epicId) ?? "Unknown epic"
+      );
+      if (epicSummary) {
+        chips.push({
+          key: "epic",
+          label: `Epic: ${epicSummary}`,
+          onRemove: () => setSelectedEpicIds([...allEpicIds]),
+        });
+      }
+    }
+
+    return chips;
+  }, [
+    search,
+    members,
+    epics,
+    selectedStatuses,
+    selectedPriorities,
+    selectedAssigneeIds,
+    selectedReporterIds,
+    selectedEpicIds,
+    hasInitializedMembers,
+    hasInitializedEpics,
+    allAssigneeIds,
+    memberIds,
+    allEpicIds,
+  ]);
+
+  const buildBoardUrl = (params: URLSearchParams) => {
+    const nextQuery = params.toString();
+
+    return `/${workspaceSlug}/projects/${projectSlug}/board${
+      nextQuery ? `?${nextQuery}` : ""
+    }`;
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveTaskId(String(event.active.id));
@@ -225,9 +547,9 @@ export default function ProjectBoardPage() {
   };
 
   const handleOpenTaskDetails = (taskId: string) => {
-    router.push(
-      `/${workspaceSlug}/projects/${projectSlug}/board?selectedTask=${taskId}`
-    );
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("selectedTask", taskId);
+    router.push(buildBoardUrl(params));
   };
 
   const handleOpenCreateTaskModal = (status: BoardStatus = TaskStatus.Todo) => {
@@ -252,14 +574,121 @@ export default function ProjectBoardPage() {
   };
 
   useEffect(() => {
-    if (members && members.length > 0) {
-      setSelectedAssigneeIds([
-        ...members.map((m) => m.id),
-        UNASSIGNED_MEMBER_ID,
-      ]);
-      setSelectedReporterIds(members.map((m) => m.id));
+    if (!members) return;
+
+    const assigneeParams = parseQueryList(searchParams.get("assignee"));
+    const reporterParams = parseQueryList(searchParams.get("reporter"));
+    const validAssigneeIds = new Set(allAssigneeIds);
+    const validReporterIds = new Set(memberIds);
+
+    if (!hasInitializedMembers) {
+      setSelectedAssigneeIds(
+        assigneeParams === null
+          ? [...allAssigneeIds]
+          : assigneeParams.filter((id) => validAssigneeIds.has(id))
+      );
+      setSelectedReporterIds(
+        reporterParams === null
+          ? [...memberIds]
+          : reporterParams.filter((id) => validReporterIds.has(id))
+      );
+      setHasInitializedMembers(true);
+      return;
     }
-  }, [members]);
+
+    setSelectedAssigneeIds((current) =>
+      current.filter((id) => validAssigneeIds.has(id))
+    );
+    setSelectedReporterIds((current) =>
+      current.filter((id) => validReporterIds.has(id))
+    );
+  }, [
+    members,
+    searchParams,
+    allAssigneeIds,
+    memberIds,
+    hasInitializedMembers,
+  ]);
+
+  useEffect(() => {
+    if (!epics) return;
+
+    const epicParams = parseQueryList(searchParams.get("epic"));
+    const validEpicIds = new Set(allEpicIds);
+
+    if (!hasInitializedEpics) {
+      setSelectedEpicIds(
+        epicParams === null
+          ? [...allEpicIds]
+          : epicParams.filter((id) => validEpicIds.has(id))
+      );
+      setHasInitializedEpics(true);
+      return;
+    }
+
+    setSelectedEpicIds((current) =>
+      current.filter((id) => validEpicIds.has(id))
+    );
+  }, [epics, searchParams, allEpicIds, hasInitializedEpics]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    const setOrDelete = (key: string, value: string | null) => {
+      if (value === null) {
+        params.delete(key);
+        return;
+      }
+
+      params.set(key, value);
+    };
+
+    setOrDelete("q", search.trim() ? search.trim() : null);
+    setOrDelete(
+      "status",
+      serializeFilterSelection(selectedStatuses, allStatuses)
+    );
+    setOrDelete(
+      "priority",
+      serializeFilterSelection(selectedPriorities, allPriorities)
+    );
+
+    if (hasInitializedMembers) {
+      setOrDelete(
+        "assignee",
+        serializeFilterSelection(selectedAssigneeIds, allAssigneeIds)
+      );
+      setOrDelete(
+        "reporter",
+        serializeFilterSelection(selectedReporterIds, memberIds)
+      );
+    }
+
+    if (hasInitializedEpics) {
+      setOrDelete(
+        "epic",
+        serializeFilterSelection(selectedEpicIds, allEpicIds)
+      );
+    }
+
+    if (params.toString() !== searchParams.toString()) {
+      router.replace(buildBoardUrl(params), { scroll: false });
+    }
+  }, [
+    search,
+    searchParams,
+    router,
+    selectedStatuses,
+    selectedPriorities,
+    selectedAssigneeIds,
+    selectedReporterIds,
+    selectedEpicIds,
+    hasInitializedMembers,
+    hasInitializedEpics,
+    allAssigneeIds,
+    memberIds,
+    allEpicIds,
+  ]);
 
   useEffect(() => {
     if (selectedTask) {
@@ -268,6 +697,7 @@ export default function ProjectBoardPage() {
         showHeader: false,
         modalContent: (
           <TaskDetailsModal
+            epics={epics || []}
             members={members ?? []}
             taskId={selectedTask}
             canUpdateTask={
@@ -277,7 +707,9 @@ export default function ProjectBoardPage() {
               apiTasks?.currentUser.permissions.task.canAssignTask ?? false
             }
             onClose={() => {
-              router.push(`/${workspaceSlug}/projects/${projectSlug}/board`);
+              const params = new URLSearchParams(searchParams.toString());
+              params.delete("selectedTask");
+              router.push(buildBoardUrl(params));
               closeModal();
             }}
             onUpdate={() => {
@@ -300,10 +732,12 @@ export default function ProjectBoardPage() {
   }, [selectedTask]);
 
   useEffect(() => {
-    if (!isOpenModal) {
-      router.push(`/${workspaceSlug}/projects/${projectSlug}/board`);
+    if (!isOpenModal && selectedTask) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("selectedTask");
+      router.replace(buildBoardUrl(params), { scroll: false });
     }
-  }, [isOpenModal]);
+  }, [isOpenModal, selectedTask, searchParams, router]);
 
   if (isLoading) {
     return <SkeletonLoading />;
@@ -320,16 +754,49 @@ export default function ProjectBoardPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-5 p-6 bg-(--background)">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="flex h-full flex-col gap-5 bg-[var(--background)] p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-normal text-[var(--text-primary)]">
+              Board
+            </h1>
+            {isFetching && (
+              <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
+                Syncing
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {visibleTaskCount} visible of {boardTasks.length} tasks
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <BoardMetric icon={ListTodo} label="Total" value={boardStats.total} />
+          <BoardMetric icon={Users} label="Active" value={boardStats.active} />
+          <BoardMetric
+            icon={Clock3}
+            label="Overdue"
+            value={boardStats.overdue}
+          />
+          <BoardMetric
+            icon={CheckCircle2}
+            label="Done"
+            value={boardStats.done}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-xs">
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search tasks..."
-          className="max-w-sm"
+          placeholder="Search title, ID, assignee..."
+          className="max-w-md"
         />
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <Popover
               position="left"
@@ -338,7 +805,12 @@ export default function ProjectBoardPage() {
               content={
                 <BoardFilters
                   members={members || []}
+                  epics={epics || []}
                   selectedPriorities={selectedPriorities}
+                  onSelectAllPriorities={() =>
+                    setSelectedPriorities([...allPriorities])
+                  }
+                  onClearPriorities={() => setSelectedPriorities([])}
                   onPriorityClicked={(priority) => {
                     setSelectedPriorities((curr) =>
                       curr.includes(priority)
@@ -347,6 +819,10 @@ export default function ProjectBoardPage() {
                     );
                   }}
                   selectedStatuses={selectedStatuses}
+                  onSelectAllStatuses={() =>
+                    setSelectedStatuses([...allStatuses])
+                  }
+                  onClearStatuses={() => setSelectedStatuses([])}
                   onStatusClicked={(status) => {
                     setSelectedStatuses((curr) =>
                       curr.includes(status)
@@ -355,6 +831,10 @@ export default function ProjectBoardPage() {
                     );
                   }}
                   selectedAssigneeIds={selectedAssigneeIds}
+                  onSelectAllAssignees={() =>
+                    setSelectedAssigneeIds([...allAssigneeIds])
+                  }
+                  onClearAssignees={() => setSelectedAssigneeIds([])}
                   onAssigneeClicked={(memberId) => {
                     setSelectedAssigneeIds((curr) =>
                       curr.includes(memberId)
@@ -363,11 +843,25 @@ export default function ProjectBoardPage() {
                     );
                   }}
                   selectedReporterIds={selectedReporterIds}
+                  onSelectAllReporters={() =>
+                    setSelectedReporterIds([...memberIds])
+                  }
+                  onClearReporters={() => setSelectedReporterIds([])}
                   onReporterClicked={(memberId) => {
                     setSelectedReporterIds((curr) =>
                       curr.includes(memberId)
                         ? curr.filter((item) => item !== memberId)
                         : [...curr, memberId]
+                    );
+                  }}
+                  selectedEpicIds={selectedEpicIds}
+                  onSelectAllEpics={() => setSelectedEpicIds([...allEpicIds])}
+                  onClearEpics={() => setSelectedEpicIds([])}
+                  onEpicClicked={(epicId) => {
+                    setSelectedEpicIds((curr) =>
+                      curr.includes(epicId)
+                        ? curr.filter((item) => item !== epicId)
+                        : [...curr, epicId]
                     );
                   }}
                 />
@@ -376,23 +870,78 @@ export default function ProjectBoardPage() {
               <button
                 type="button"
                 onClick={() => setIsFilterOpen((curr) => !curr)}
-                className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--secondary)]"
+                className="flex h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm font-medium text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--secondary)]"
               >
                 <Filter size={15} />
                 Filter
                 <span className="rounded-full bg-[var(--secondary)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
-                  {selectedStatuses.length}/{columns.length}
+                  {activeFilterCount}
                 </span>
               </button>
             </Popover>
           </div>
+
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={resetBoardFilters}
+              className="flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
+            >
+              <RotateCcw size={15} />
+              Reset
+            </button>
+          )}
         </div>
       </div>
+
+      {appliedFilterChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {appliedFilterChips.map((chip) => (
+            <FilterChipButton key={chip.key} chip={chip} />
+          ))}
+        </div>
+      )}
 
       {visibleColumns.length === 0 ? (
         <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[var(--border)] text-sm text-[var(--text-secondary)]">
           No columns selected.
         </div>
+      ) : boardTasks.length > 0 && filteredTasks.length === 0 ? (
+        <EmptyBoardState
+          title="No tasks match your filters"
+          description="Reset filters or search for a different task."
+          action={
+            <button
+              type="button"
+              onClick={resetBoardFilters}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-medium text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--secondary)]"
+            >
+              <RotateCcw size={15} />
+              Reset filters
+            </button>
+          }
+        />
+      ) : boardTasks.length === 0 ? (
+        <EmptyBoardState
+          title="No tasks yet"
+          description={
+            canCreateTask
+              ? "Create the first task to start planning this project."
+              : "Tasks created for this project will appear here."
+          }
+          action={
+            canCreateTask ? (
+              <button
+                type="button"
+                onClick={() => handleOpenCreateTaskModal(TaskStatus.Todo)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--on-primary)] shadow-xs transition hover:brightness-95"
+              >
+                <Plus size={15} />
+                Create task
+              </button>
+            ) : null
+          }
+        />
       ) : mounted ? (
         <DndContext
           sensors={sensors}
@@ -470,6 +1019,71 @@ function BoardColumns({
   );
 }
 
+function BoardMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="flex min-w-[118px] items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 shadow-xs">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--secondary)] text-[var(--text-primary)]">
+        <Icon size={16} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-[var(--text-secondary)]">{label}</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)]">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyBoardState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]/55 p-8">
+      <div className="flex max-w-sm flex-col items-center text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--secondary)] text-[var(--text-primary)]">
+          <ListTodo size={22} />
+        </div>
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          {description}
+        </p>
+        {action && <div className="mt-5">{action}</div>}
+      </div>
+    </div>
+  );
+}
+
+function FilterChipButton({ chip }: { chip: FilterChip }) {
+  return (
+    <button
+      type="button"
+      onClick={chip.onRemove}
+      className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-medium text-[var(--text-secondary)] shadow-xs transition hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
+      title={`Remove ${chip.label}`}
+    >
+      <span className="truncate">{chip.label}</span>
+      <X size={13} className="shrink-0" />
+    </button>
+  );
+}
+
 function KanbanColumn({
   id,
   title,
@@ -515,7 +1129,7 @@ function KanbanColumn({
         min-w-[320px]
         shrink-0
         min-h-[560px]
-        rounded-2xl
+        rounded-xl
         border
         p-3 shadow-sm
         relative
@@ -526,7 +1140,7 @@ function KanbanColumn({
     >
       {isOver && (
         <div
-          className="pointer-events-none absolute inset-0 rounded-2xl"
+          className="pointer-events-none absolute inset-0 rounded-xl"
           style={{
             background: `linear-gradient(135deg, color-mix(in srgb, ${statusStyle.bg} 28%, transparent), transparent 58%)`,
             boxShadow: `inset 0 0 0 2px ${statusStyle.bg}`,
@@ -548,7 +1162,7 @@ function KanbanColumn({
           </h2>
 
           <span
-            className="rounded-full px-2 py-0.5 text-xs font-medium"
+            className="rounded-full px-2 py-0.5 text-xs font-semibold"
             style={{
               background: statusStyle.bg,
               color: statusStyle.text,
@@ -565,8 +1179,8 @@ function KanbanColumn({
           <button
             type="button"
             onClick={() => onCreateTask(id)}
-            className="sticky top-0  flex h-10 w-full items-center justify-center cursor-pointer
-            shadow-lg gap-2 rounded-xl border border-dashed  bg-(--background)
+            className="sticky top-0 z-10 flex h-10 w-full cursor-pointer items-center justify-center
+            gap-2 rounded-xl border border-dashed bg-[var(--background)]
             border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
             style={{ borderColor: statusStyle.bg }}
           >
@@ -584,6 +1198,12 @@ function KanbanColumn({
             onOpenTaskDetails={onOpenTaskDetails}
           />
         ))}
+
+        {tasks.length === 0 && (
+          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]/55 px-4 py-8 text-center text-sm text-[var(--text-secondary)]">
+            No tasks in {title.toLowerCase()}.
+          </div>
+        )}
       </div>
     </section>
   );
@@ -649,16 +1269,18 @@ function TaskCard({
         ref={setNodeRef}
         style={style}
         className={`
-        cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs 
+        cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs outline-none
         ${
           isDragging
             ? "scale-[1.02] opacity-80 shadow-lg"
-            : "transition-shadow hover:shadow-sm"
+            : "transition-all hover:-translate-y-0.5 hover:border-[var(--primary)]/40 hover:shadow-md"
         }
       `}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
+            <TaskRelationBadges task={task} />
+
             <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
               {task.title}
             </h3>
@@ -705,7 +1327,7 @@ function TaskCard({
               ) : (
                 <div
                   title={task.assignee?.fullName ?? "Unassigned"}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-(--border) text-xs font-bold text-(--muted)"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-bold text-[var(--text-secondary)]"
                 >
                   {assigneeInitial}
                 </div>
@@ -729,7 +1351,9 @@ function TaskCardPreview({ task }: { task: Task }) {
   return (
     <article className="w-[296px] cursor-grabbing rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 opacity-95 shadow-2xl">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
+          <TaskRelationBadges task={task} />
+
           <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
             {task.title}
           </h3>
@@ -772,5 +1396,57 @@ function PriorityBadge({ priority }: { priority: Task["priority"] }) {
     >
       {priority}
     </span>
+  );
+}
+
+function TaskRelationBadges({ task }: { task: Task }) {
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+      {task.epic && (
+        <div
+          className="mb-2 rounded-lg border px-2.5 py-2"
+          style={{
+            borderColor: task.epic.color ?? "var(--primary)",
+            background: `color-mix(in srgb, ${
+              task.epic.color ?? "var(--primary)"
+            } 12%, transparent)`,
+          }}
+        >
+          <div className="mb-1 flex items-center gap-2">
+            <Layers3
+              size={12}
+              style={{
+                color: task.epic.color ?? "var(--primary)",
+              }}
+            />
+
+            <span
+              className="text-[10px] font-black tracking-wider uppercase"
+              style={{
+                color: task.epic.color ?? "var(--primary)",
+              }}
+            >
+              EPIC
+            </span>
+          </div>
+
+          <p
+            className="line-clamp-1 text-xs font-semibold"
+            style={{
+              color: task.epic.color ?? "var(--primary)",
+            }}
+          >
+            {task.epic.title}
+          </p>
+        </div>
+      )}
+
+      {task.parentTask && (
+        <div className="mb-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+          <GitBranch size={12} />
+          <span className="truncate">{task.parentTask.title}</span>
+        </div>
+      )}
+    </div>
   );
 }

@@ -11,6 +11,9 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { EmailsModule } from './modules/emails/emails.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
+import { ClickHouseModule } from './modules/click-house/click-house.module';
+import { ProjectEpicsModule } from './modules/project-epics/project-epics.module';
+import { InboxItemsModule } from './modules/inbox-items/inbox-items.module';
 
 @Module({
   imports: [
@@ -34,6 +37,9 @@ import { InvitationsModule } from './modules/invitations/invitations.module';
     PermissionsModule,
     EmailsModule,
     InvitationsModule,
+    ClickHouseModule,
+    ProjectEpicsModule,
+    InboxItemsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

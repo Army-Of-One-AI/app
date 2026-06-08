@@ -35,7 +35,16 @@ export type Task = {
 
   subtasks: Task[];
 
-  parentTask: Task | null;
+  epic?: {
+    id: string;
+    title: string;
+    color?: string | null;
+  } | null;
+
+  parentTask?: {
+    id: string;
+    title: string;
+  } | null;
 };
 
 export type TaskActivityItem = {
@@ -53,7 +62,9 @@ export type TaskActivityItem = {
   };
 };
 
-export type TaskDetails = Task;
+export type TaskDetails = Task & {
+  epic: Epic | null;
+};
 
 export type GetTaskActivitiesParams = {
   workspaceSlug: string;
@@ -70,4 +81,16 @@ export type TaskActivitiesResponse = {
     hasMore: boolean;
     nextCursor: string | null;
   };
+};
+
+export type Epic = {
+  id: string;
+  color: string;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  position: number;
+  startDate: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 };

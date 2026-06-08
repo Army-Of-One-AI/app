@@ -7,6 +7,8 @@ import { TasksModule } from '../tasks/tasks.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { DocumentsModule } from '../documents/documents.module';
 import { EmailsModule } from '../emails/emails.module';
+import { ProjectEpicsModule } from '../project-epics/project-epics.module';
+import { InboxItemsModule } from '../inbox-items/inbox-items.module';
 
 @Module({
   controllers: [WorkspacesController],
@@ -16,6 +18,8 @@ import { EmailsModule } from '../emails/emails.module';
     PermissionsModule,
     DocumentsModule,
     EmailsModule,
+    ProjectEpicsModule,
+    InboxItemsModule,
   ],
   providers: [WorkspacesService, PrismaService],
   exports: [WorkspacesService],

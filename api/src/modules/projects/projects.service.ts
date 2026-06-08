@@ -5,10 +5,15 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { Prisma } from 'generated/prisma/browser';
 import { DateTime } from 'luxon';
 import AddMemberToProject from '../workspaces/dto/add-member-to-project';
+import { ClickHouseService } from '../click-house/click-house.service';
+import { clickHouseDateTimeToISO } from 'src/shared/utils/utils';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clickhouseService: ClickHouseService,
+  ) {}
 
   async create(
     creatorId: string,
@@ -292,7 +297,6 @@ export class ProjectsService {
       tasksByStatus,
       tasksByPriority,
       tasksByAsignee,
-      recentActivities,
     ] = await this.prisma.$transaction([
       this.prisma.task.count({
         where: {
@@ -390,16 +394,19 @@ export class ProjectsService {
         },
       }),
 
-      this.prisma.taskActivityLog.findMany({
-        where: {
-          project_id: project.id,
-        },
-        orderBy: {
-          created_at: 'desc',
-        },
-        take: 10,
-      }),
+      // this.prisma.taskActivityLog.findMany({
+      //   where: {
+      //     project_id: project.id,
+      //   },
+      //   orderBy: {
+      //     created_at: 'desc',
+      //   },
+      //   take: 10,
+      // }),
     ]);
+
+    const recentActivities =
+      await this.clickhouseService.getProjectLatestActivities(project.id);
 
     const taskIds = [
       ...new Set(
@@ -503,8 +510,9 @@ export class ProjectsService {
       recentActivities: recentActivities.map((activity) => ({
         id: activity.id,
         activity: activity.activity,
-        createdAt: activity.created_at,
-        metadata: activity.metadata,
+        createdAt: clickHouseDateTimeToISO(activity.created_at),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        metadata: JSON.parse(activity.metadata),
         task: taskMap.get(activity.task_id) ?? null,
         actor: {
           id: activity.user_id,
@@ -512,10 +520,23 @@ export class ProjectsService {
           avatarURL: activity.actor_avatar_snapshot,
         },
       })),
+      // recentActivities: recentActivities.map((activity) => ({
+      //   id: activity.id,
+      //   activity: activity.activity,
+      //   createdAt: activity.created_at,
+      //   metadata: activity.metadata,
+      //   task: taskMap.get(activity.task_id) ?? null,
+      //   actor: {
+      //     id: activity.user_id,
+      //     fullName: activity.actor_name_snapshot,
+      //     avatarURL: activity.actor_avatar_snapshot,
+      //   },
+      // })),
     };
   }
 
   async addMemberToProject(
+    userId: string,
     projectSlug: string,
     workspaceSlug: string,
     payload: AddMemberToProject,
@@ -527,18 +548,42 @@ export class ProjectsService {
           slug: workspaceSlug,
         },
       },
+      include: {
+        workspace: true,
+      },
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
     }
 
-    return this.prisma.projectMember.create({
-      data: {
-        project_id: project.id,
-        member_id: payload.targetUserId,
-        ...(payload.role ? { role: payload.role } : { role: 'Member' }),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const projectMember = await tx.projectMember.create({
+        data: {
+          project_id: project.id,
+          member_id: payload.targetUserId,
+          role: payload.role ?? 'Member',
+        },
+      });
+
+      await tx.inboxItem.create({
+        data: {
+          user_id: payload.targetUserId,
+          actor_id: userId,
+          workspace_id: project.workspace_id,
+          project_id: project.id,
+          type: 'PROJECT_ADDED',
+          title: 'You were added to a project',
+          message: project.name,
+          metadata: {
+            projectName: project.name,
+            workspaceName: project.workspace.name,
+            role: payload.role ?? 'Member',
+          },
+        },
+      });
+
+      return projectMember;
     });
   }
 

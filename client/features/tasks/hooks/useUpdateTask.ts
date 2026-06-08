@@ -12,6 +12,7 @@ type UpdateTaskPayload = {
   dueDate?: string | null;
   estimate?: number | null;
   assigneeId?: string | null;
+  epicId?: string | null;
 };
 
 export default function useUpdateTask() {

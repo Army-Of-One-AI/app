@@ -28,9 +28,11 @@ const COLORS: Record<TaskStatus, string> = {
 export default function StatusDonutChart({
   statusCounts,
   totalTasks,
+  onStatusClick,
 }: {
   statusCounts: Record<TaskStatus, number>;
   totalTasks: number;
+  onStatusClick?: (status: TaskStatus) => void;
 }) {
   const data = useMemo(
     () =>
@@ -46,6 +48,18 @@ export default function StatusDonutChart({
   return (
     <div className="flex items-center justify-center">
       <div className="relative h-[220px] w-[220px]">
+        {totalTasks === 0 ? (
+          <div className="flex h-full w-full items-center justify-center rounded-full border border-dashed border-[var(--border)] bg-[var(--secondary)]/40 text-center">
+            <div>
+              <p className="text-3xl font-semibold text-[var(--text-primary)]">
+                0
+              </p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                No tasks
+              </p>
+            </div>
+          </div>
+        ) : (
         <div className="relative z-20 h-full w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -81,6 +95,7 @@ export default function StatusDonutChart({
                   <Cell
                     key={item.name}
                     fill={item.color}
+                    onClick={() => onStatusClick?.(item.name)}
                     className="cursor-pointer outline-none transition-opacity duration-200 hover:opacity-80"
                   />
                 ))}
@@ -97,6 +112,7 @@ export default function StatusDonutChart({
             </p>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { apiClient } from "@/shared/api/apiClient";
+import { DocumentDetails } from "../types";
 
 export const createDocument = async (params: {
   workspaceSlug: string;
@@ -16,8 +17,10 @@ export const createDocument = async (params: {
     content,
   };
 
-  await apiClient.post(
+  const response = await apiClient.post(
     `/workspaces/${workspaceSlug}/projects/${projectSlug}/documents`,
     payload
   );
+
+  return response.data as DocumentDetails;
 };

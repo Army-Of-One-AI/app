@@ -7,8 +7,10 @@ const PRIORITY_ORDER: TaskPriority[] = ["Urgent", "High", "Medium", "Low"];
 
 export default function PriorityBreakdownChart({
   priorityCounts,
+  onPriorityClick,
 }: {
   priorityCounts: Partial<Record<TaskPriority, number>>;
+  onPriorityClick?: (priority: TaskPriority) => void;
 }) {
   const { data, total } = useMemo(() => {
     const rows = PRIORITY_ORDER.map((priority) => {
@@ -29,7 +31,7 @@ export default function PriorityBreakdownChart({
   }, [priorityCounts]);
 
   return (
-    <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-base font-semibold text-[var(--text-primary)]">
@@ -46,11 +48,26 @@ export default function PriorityBreakdownChart({
       </div>
 
       <div className="mt-5 space-y-4">
-        {data.map((item) => {
+        {total === 0 ? (
+          <div className="rounded-xl border border-dashed border-[var(--border)] py-10 text-center">
+            <p className="text-sm font-medium text-[var(--text-primary)]">
+              No priority data
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              Tasks with priorities will appear here.
+            </p>
+          </div>
+        ) : (
+          data.map((item) => {
           const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
 
           return (
-            <div key={item.priority} className="space-y-2">
+            <button
+              key={item.priority}
+              type="button"
+              onClick={() => onPriorityClick?.(item.priority)}
+              className="block w-full space-y-2 rounded-xl p-2 text-left transition hover:bg-[var(--secondary)]"
+            >
               <div className="grid grid-cols-[minmax(0,1fr)_70px_48px] items-center gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span
@@ -82,9 +99,10 @@ export default function PriorityBreakdownChart({
                   }}
                 />
               </div>
-            </div>
+            </button>
           );
-        })}
+        })
+        )}
       </div>
     </section>
   );

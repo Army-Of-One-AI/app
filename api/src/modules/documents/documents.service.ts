@@ -23,6 +23,7 @@ export class DocumentsService {
     }
 
     const { title } = dto;
+    const slug = await this.createUniqueSlug(project.id, title);
 
     const content: Prisma.InputJsonObject = {
       html: dto.content.html,
@@ -32,17 +33,29 @@ export class DocumentsService {
     const newDocument = await this.prisma.document.create({
       data: {
         project_id: project.id,
-        slug: slugify(title, {
-          lower: true,
-          strict: true,
-        }),
+        slug,
         title,
         content,
         creator_id: userId,
       },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            userInfo: {
+              select: {
+                full_name: true,
+                avatar_url: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    return newDocument;
+    return this.mapDocument(newDocument, true);
   }
 
   async findProjectDocuments(
@@ -128,6 +141,110 @@ export class DocumentsService {
         totalPages: Math.ceil(total / safeLimit),
         hasNextPage: safePage * safeLimit < total,
         hasPreviousPage: safePage > 1,
+      },
+    };
+  }
+
+  async findProjectDocumentBySlug(
+    projectSlug: string,
+    workspaceSlug: string,
+    documentSlug: string,
+  ) {
+    const document = await this.prisma.document.findFirst({
+      where: {
+        slug: documentSlug,
+        project: {
+          slug: projectSlug,
+          workspace: {
+            slug: workspaceSlug,
+          },
+        },
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            userInfo: {
+              select: {
+                full_name: true,
+                avatar_url: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    return this.mapDocument(document, true);
+  }
+
+  private async createUniqueSlug(projectId: string, title: string) {
+    const baseSlug =
+      slugify(title, {
+        lower: true,
+        strict: true,
+      }) || 'document';
+
+    let candidate = baseSlug;
+    let suffix = 2;
+
+    while (
+      await this.prisma.document.findUnique({
+        where: {
+          project_id_slug: {
+            project_id: projectId,
+            slug: candidate,
+          },
+        },
+      })
+    ) {
+      candidate = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    return candidate;
+  }
+
+  private mapDocument<
+    T extends {
+      id: string;
+      title: string;
+      created_at: Date;
+      updated_at: Date | null;
+      slug: string;
+      content?: Prisma.JsonValue | null;
+      creator: {
+        id: string;
+        email: string;
+        username: string;
+        userInfo: {
+          full_name: string | null;
+          avatar_url: string | null;
+        } | null;
+      };
+    },
+  >(document: T, includeContent = false) {
+    return {
+      id: document.id,
+      title: document.title,
+      createdAt: document.created_at,
+      updatedAt: document.updated_at,
+      slug: document.slug,
+      ...(includeContent && {
+        content: document.content ?? null,
+      }),
+      creator: {
+        id: document.creator.id,
+        email: document.creator.email,
+        fullName: document.creator.userInfo?.full_name,
+        avatarURL: document.creator.userInfo?.avatar_url,
+        username: document.creator.username,
       },
     };
   }

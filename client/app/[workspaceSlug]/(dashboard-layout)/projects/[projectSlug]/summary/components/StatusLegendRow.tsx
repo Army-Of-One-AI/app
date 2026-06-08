@@ -5,15 +5,21 @@ export default function StatusLegendRow({
   status,
   count,
   percent,
+  onClick,
 }: {
   status: TaskStatus;
   count: number;
   percent: number;
+  onClick?: () => void;
 }) {
   const config = taskStatusConfig[status];
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_88px_52px] items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-[var(--secondary)]">
+    <button
+      type="button"
+      onClick={onClick}
+      className="grid w-full grid-cols-[minmax(0,1fr)_88px_52px] items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-[var(--secondary)]"
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span
           className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -31,6 +37,6 @@ export default function StatusLegendRow({
       <span className="text-right text-sm tabular-nums text-[var(--text-secondary)]">
         {percent}%
       </span>
-    </div>
+    </button>
   );
 }

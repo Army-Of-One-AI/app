@@ -4,7 +4,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { TaskActivityItem, Task, TaskDetails } from "@/features/tasks/types";
+import {
+  TaskActivityItem,
+  Task,
+  TaskDetails,
+  Epic,
+} from "@/features/tasks/types";
 import { TaskActivity, TaskPriority, TaskStatus } from "@/shared/types/enums";
 import RichTextEditor from "@/shared/ui/RichTextEditor";
 import Button from "@/shared/ui/Button";
@@ -30,6 +35,7 @@ type Props = {
   canUpdateTask: boolean;
   canAssignTask: boolean;
   members: ProjectMember[];
+  epics: Epic[];
   onClose: () => void;
   onUpdate: (task: Task) => void;
   onClickSubtask: (subtask: Task) => void;
@@ -56,6 +62,7 @@ export default function TaskDetailsModal({
   onClose,
   onUpdate,
   onClickSubtask,
+  epics,
 }: Props) {
   const queryClient = useQueryClient();
 
@@ -113,6 +120,10 @@ export default function TaskDetailsModal({
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [assigneeSearch, setAssigneeSearch] = useState("");
 
+  const [epicId, setEpicId] = useState("");
+  const [isEpicOpen, setIsEpicOpen] = useState(false);
+  const [epicSearch, setEpicSearch] = useState("");
+
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [isCreatingSubtask, setIsCreatingSubtask] = useState(false);
   const [subtaskTitle, setSubtaskTitle] = useState("");
@@ -132,6 +143,12 @@ export default function TaskDetailsModal({
     return members.find((member) => member.id === assigneeId) ?? null;
   }, [members, assigneeId]);
 
+  const selectedEpic = useMemo(() => {
+    if (!epics || epics.length === 0) return null;
+
+    return epics.find((epic) => epic.id === epicId) ?? null;
+  }, [epics, epicId]);
+
   const filteredMembers = useMemo(() => {
     const keyword = assigneeSearch.toLowerCase().trim();
 
@@ -143,6 +160,16 @@ export default function TaskDetailsModal({
         .some((value) => value!.toLowerCase().includes(keyword))
     );
   }, [members, assigneeSearch]);
+
+  const filteredEpics = useMemo(() => {
+    if (!epics || epics.length === 0) return [];
+
+    const keyword = epicSearch.toLowerCase().trim();
+
+    if (!keyword) return epics;
+
+    return epics.filter((epic) => epic.title.toLowerCase().includes(keyword));
+  }, [epics, epicSearch]);
 
   const subtaskProgress = useMemo(() => {
     if (subtasks.length === 0) return 0;
@@ -166,6 +193,10 @@ export default function TaskDetailsModal({
     setAssigneeId(typedTask.assignee?.id ?? "");
     setIsAssigneeOpen(false);
     setAssigneeSearch("");
+
+    setEpicId(typedTask.epic?.id ?? "");
+    setIsEpicOpen(false);
+    setEpicSearch("");
 
     setSubtasks(typedTask.subtasks ?? []);
     setIsCreatingSubtask(false);
@@ -192,6 +223,7 @@ export default function TaskDetailsModal({
       dueDate: dueDate || null,
       estimate: estimate ? Number(estimate) : null,
       assigneeId: assigneeId || null,
+      epicId: selectedEpic ? selectedEpic.id : null,
     });
 
     onUpdate(updatedTask);
@@ -219,7 +251,6 @@ export default function TaskDetailsModal({
         parentTaskId: typedTask.id,
         priority: "Medium",
         status: "Todo",
-        // assigneeId: subtaskAssigneeId || null,
       },
       {
         onSuccess: async () => {
@@ -589,7 +620,6 @@ export default function TaskDetailsModal({
                       {selectedAssignee ? (
                         <>
                           <MemberAvatar member={selectedAssignee} size="sm" />
-
                           <span className="min-w-0 flex-1 truncate text-[var(--text-primary)]">
                             {selectedAssignee.fullName ||
                               selectedAssignee.username}
@@ -600,7 +630,6 @@ export default function TaskDetailsModal({
                           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-semibold text-[var(--text-secondary)]">
                             —
                           </div>
-
                           <span className="text-[var(--text-secondary)]">
                             Unassigned
                           </span>
@@ -681,6 +710,107 @@ export default function TaskDetailsModal({
                           {filteredMembers.length === 0 && (
                             <div className="px-3 py-5 text-center text-sm text-[var(--text-secondary)]">
                               No members found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </DetailRow>
+
+                <DetailRow label="Epic">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setIsEpicOpen((curr) => !curr)}
+                      className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {selectedEpic ? (
+                        <>
+                          <span
+                            className="h-3 w-3 rounded-full"
+                            style={{
+                              backgroundColor:
+                                selectedEpic.color ?? "var(--primary)",
+                            }}
+                          />
+
+                          <span className="min-w-0 flex-1 truncate text-[var(--text-primary)]">
+                            {selectedEpic.title}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[var(--text-secondary)]">
+                          No epic
+                        </span>
+                      )}
+                    </button>
+
+                    {isEpicOpen && (
+                      <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg">
+                        <div className="border-b border-[var(--border)] p-2">
+                          <SearchBar
+                            autoFocus
+                            value={epicSearch}
+                            onChange={setEpicSearch}
+                            placeholder="Search epic..."
+                          />
+                        </div>
+
+                        <div className="max-h-60 overflow-y-auto py-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEpicId("");
+                              setIsEpicOpen(false);
+                              setEpicSearch("");
+                            }}
+                            className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
+                          >
+                            <span className="text-sm text-[var(--text-secondary)]">
+                              No epic
+                            </span>
+                          </button>
+
+                          {filteredEpics.map((epic) => {
+                            const isSelected = epic.id === epicId;
+
+                            return (
+                              <button
+                                key={epic.id}
+                                type="button"
+                                onClick={() => {
+                                  setEpicId(epic.id);
+                                  setIsEpicOpen(false);
+                                  setEpicSearch("");
+                                }}
+                                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
+                              >
+                                <span
+                                  className="h-3 w-3 rounded-full"
+                                  style={{
+                                    backgroundColor:
+                                      epic.color ?? "var(--primary)",
+                                  }}
+                                />
+
+                                <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-primary)]">
+                                  {epic.title}
+                                </span>
+
+                                {isSelected && (
+                                  <span className="text-xs font-semibold text-[var(--primary)]">
+                                    Selected
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+
+                          {filteredEpics.length === 0 && (
+                            <div className="px-3 py-5 text-center text-sm text-[var(--text-secondary)]">
+                              No epics found
                             </div>
                           )}
                         </div>

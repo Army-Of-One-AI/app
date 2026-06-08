@@ -14,8 +14,10 @@ type AssigneeWorkload = {
 
 export default function AssigneeWorkloadChart({
   assignees,
+  onAssigneeClick,
 }: {
   assignees: AssigneeWorkload[];
+  onAssigneeClick?: (assigneeId: string) => void;
 }) {
   const data = useMemo(
     () =>
@@ -44,7 +46,7 @@ export default function AssigneeWorkloadChart({
   );
 
   return (
-    <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-base font-semibold text-[var(--text-primary)]">
@@ -71,9 +73,11 @@ export default function AssigneeWorkloadChart({
                   : 0;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={assignee.id || assignee.displayName}
-                  className="space-y-2"
+                  onClick={() => onAssigneeClick?.(assignee.id)}
+                  className="block w-full space-y-2 rounded-xl p-2 text-left transition hover:bg-[var(--secondary)]"
                 >
                   <div className="grid grid-cols-[minmax(0,1fr)_72px] items-center gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -116,7 +120,7 @@ export default function AssigneeWorkloadChart({
                       style={{ width: `${percent}%` }}
                     />
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

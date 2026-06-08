@@ -44,6 +44,8 @@ import CreateDocumentDto from '../documents/dto/create-document.dto';
 import GetTaskActivitiesDto from './dto/get-task-activities.dto';
 import InviteByEmailsDto from './dto/invite-by-emails.dto';
 import AddMemberToProject from './dto/add-member-to-project';
+import { ProjectEpicsService } from '../project-epics/project-epics.service';
+import { CreateEpicDto } from '../project-epics/dto/create-epic.dto';
 
 @Controller('workspaces')
 export class WorkspacesController {
@@ -52,6 +54,7 @@ export class WorkspacesController {
     private readonly projectsService: ProjectsService,
     private readonly tasksService: TasksService,
     private readonly documentsService: DocumentsService,
+    private readonly projectEpicsService: ProjectEpicsService,
   ) {}
 
   @UseGuards(JWTAuthGuard)
@@ -301,11 +304,13 @@ export class WorkspacesController {
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_MEMBER_MANAGE_ROLES))
   @Post(':workspaceSlug/projects/:projectSlug/members')
   async addMemberToProject(
+    @CurrentUser() user: { id: string },
     @Param('projectSlug') pjSlug: string,
     @Param('workspaceSlug') wsSlug: string,
     @Body() payload: AddMemberToProject,
   ) {
     return await this.projectsService.addMemberToProject(
+      user.id,
       pjSlug,
       wsSlug,
       payload,
@@ -341,6 +346,20 @@ export class WorkspacesController {
     );
   }
 
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/documents/:documentSlug')
+  async getProjectDocument(
+    @Param('workspaceSlug') wsSlug: string,
+    @Param('projectSlug') pjSlug: string,
+    @Param('documentSlug') documentSlug: string,
+  ) {
+    return await this.documentsService.findProjectDocumentBySlug(
+      pjSlug,
+      wsSlug,
+      documentSlug,
+    );
+  }
+
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
   @Post(':workspaceSlug/projects/:projectSlug/documents')
   async createProjectDocuments(
@@ -349,5 +368,25 @@ export class WorkspacesController {
     @Body() payload: CreateDocumentDto,
   ) {
     return await this.documentsService.create(user.id, pjSlug, payload);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/epics')
+  async getProjectEpics(@Param('projectSlug') projectSlug: string) {
+    return await this.projectEpicsService.getProjectEpics(projectSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/epics')
+  async createEpic(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Body() dto: CreateEpicDto,
+  ) {
+    return await this.projectEpicsService.createEpic(
+      workspaceSlug,
+      projectSlug,
+      dto,
+    );
   }
 }

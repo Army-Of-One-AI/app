@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: Props) {
   return (
     <div
       className={`
-        absolute inset-0
+        absolute inset-0 overflow-hidden
         ${classNames.background}
       `}
     >
@@ -19,15 +19,16 @@ export default function DashboardLayout({ children }: Props) {
         className={`
           absolute
           top-3
-          left-60
+          right-3
+          left-64
+          bottom-3
           h-[calc(100vh-24px)]
-          w-[calc(100vw-252px)]
-          overflow-y-auto
-          rounded-xl
+          overflow-hidden
+          rounded-2xl
           border
           ${classNames.background}
           ${classNames.border}
-          shadow-lg
+          shadow-[var(--shadow-soft)]
         `}
       >
         {children}

@@ -103,3 +103,14 @@ export type RecentTaskActivity = {
     avatarURL: string | null;
   };
 };
+
+export type CreateEpicPayload = {
+  title: string;
+  description?: {
+    html: string;
+    plainText: string;
+  };
+  color?: string;
+  startDate?: string;
+  dueDate?: string;
+};

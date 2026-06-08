@@ -5,10 +5,15 @@ import { TaskActivity, TaskPriority, TaskStatus } from 'generated/prisma/enums';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Prisma } from 'generated/prisma/browser';
 import GetTaskActivitiesDto from '../workspaces/dto/get-task-activities.dto';
+import { ClickHouseService } from '../click-house/click-house.service';
+import { Epic } from 'generated/prisma/client';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clickhouseService: ClickHouseService,
+  ) {}
 
   async createNewTask(
     userId: string,
@@ -24,9 +29,7 @@ export class TasksService {
           slug: workspaceSlug,
         },
       },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
 
     if (!project) {
@@ -112,6 +115,18 @@ export class TasksService {
         },
       });
 
+      void this.clickhouseService.insertTaskActivity({
+        id: activity.id,
+        taskId: activity.task_id,
+        activity: activity.activity,
+        userId: activity.user_id,
+        createdAt: activity.created_at,
+        projectId: activity.project_id,
+        metadata: activity.metadata,
+        actorAvatarSnapshot: activity.actor_avatar_snapshot ?? '',
+        actorNameSnapshot: activity.actor_name_snapshot ?? '',
+      });
+
       return { task, activity };
     });
 
@@ -154,10 +169,26 @@ export class TasksService {
           },
         },
       }),
+
       this.prisma.project.findFirst({
         where: {
           slug: projectSlug,
           deleted_at: null,
+          workspace: {
+            slug: workspaceSlug,
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          workspace_id: true,
+          workspace: {
+            select: {
+              name: true,
+              slug: true,
+            },
+          },
         },
       }),
     ]);
@@ -250,15 +281,23 @@ export class TasksService {
       });
     }
 
+    let nextAssigneeUsername: string | null = null;
+
     if (dto.assigneeId !== undefined && dto.assigneeId !== task.assignee_id) {
       if (dto.assigneeId !== null) {
         const nextAssignee = await this.prisma.user.findUnique({
           where: {
             id: dto.assigneeId,
           },
+          select: {
+            id: true,
+            username: true,
+          },
         });
 
         if (nextAssignee) {
+          nextAssigneeUsername = nextAssignee.username;
+
           activities.push({
             task_id: task.id,
             project_id: project.id,
@@ -328,11 +367,23 @@ export class TasksService {
       });
     }
 
+    const now = new Date();
+
+    const finalActivities = activities.map((ac) => ({
+      ...ac,
+      id: crypto.randomUUID(),
+      created_at: now,
+    }));
+
+    const shouldCreateAssignInboxItem =
+      dto.assigneeId !== undefined &&
+      dto.assigneeId !== null &&
+      dto.assigneeId !== task.assignee_id &&
+      dto.assigneeId !== userId;
+
     const operations: Prisma.PrismaPromise<unknown>[] = [
       this.prisma.task.update({
-        where: {
-          id: task.id,
-        },
+        where: { id: task.id },
         data: {
           ...(dto.title !== undefined && { title: dto.title }),
           ...(dto.description !== undefined && {
@@ -340,18 +391,21 @@ export class TasksService {
           }),
           ...(dto.status !== undefined && {
             status: dto.status,
-            ...(dto.status === 'Done' && { completed_at: new Date() }),
+            ...(dto.status === 'Done'
+              ? { completed_at: new Date() }
+              : { completed_at: null }),
           }),
           ...(dto.priority !== undefined && { priority: dto.priority }),
           ...(dto.estimate !== undefined && { estimate: dto.estimate }),
-          ...(dto.dueDate !== undefined && {
-            due_date: nextDueDate,
-          }),
+          ...(dto.dueDate !== undefined && { due_date: nextDueDate }),
           ...(dto.assigneeId !== undefined && {
             assignee_id: dto.assigneeId || null,
           }),
           ...(dto.parentTaskId !== undefined && {
             parent_task_id: dto.parentTaskId || null,
+          }),
+          ...(dto.epicId !== undefined && {
+            epic_id: dto.epicId || null,
           }),
         },
         select: {
@@ -371,14 +425,62 @@ export class TasksService {
       }),
     ];
 
-    if (activities.length > 0) {
+    if (finalActivities.length > 0) {
       operations.push(
         this.prisma.taskActivityLog.createMany({
-          data: activities,
+          data: finalActivities,
         }),
       );
     }
+
+    if (shouldCreateAssignInboxItem) {
+      operations.push(
+        this.prisma.inboxItem.create({
+          data: {
+            user_id: dto.assigneeId!,
+            actor_id: userId,
+            workspace_id: project.workspace_id,
+            project_id: project.id,
+            task_id: task.id,
+            type: 'TASK_ASSIGNED',
+            title: `You were assigned to ${task.title}`,
+            message: `${user.userInfo?.full_name || 'Someone'} assigned you to a task`,
+            metadata: {
+              taskTitle: task.title,
+              projectName: project.name,
+              projectSlug: project.slug,
+              workspaceName: project.workspace.name,
+              workspaceSlug: project.workspace.slug,
+              assigneeUsername: nextAssigneeUsername,
+            },
+          },
+        }),
+      );
+    }
+
     const [updatedTask] = await this.prisma.$transaction(operations);
+
+    void Promise.allSettled(
+      finalActivities.map((ac) =>
+        this.clickhouseService.insertTaskActivity({
+          id: ac.id,
+          activity: ac.activity,
+          createdAt: ac.created_at,
+          projectId: ac.project_id,
+          taskId: ac.task_id,
+          metadata: ac.metadata,
+          userId: ac.user_id,
+          actorAvatarSnapshot: ac.actor_avatar_snapshot ?? '',
+          actorNameSnapshot: ac.actor_name_snapshot ?? '',
+        }),
+      ),
+    ).then((results) => {
+      results.forEach((result) => {
+        if (result.status === 'rejected') {
+          console.error('ClickHouse activity insert failed:', result.reason);
+        }
+      });
+    });
 
     return updatedTask;
   }
@@ -386,7 +488,6 @@ export class TasksService {
   async getTasksByProjectSlug(projectSlug: string, workspaceSlug: string) {
     const tasks = await this.prisma.task.findMany({
       where: {
-        parent_task_id: null,
         deleted_at: null,
         archived_at: null,
         project: {
@@ -409,6 +510,13 @@ export class TasksService {
         position: true,
         status: true,
         started_at: true,
+        epic: {
+          select: {
+            id: true,
+            title: true,
+            color: true,
+          },
+        },
         assignee: {
           select: {
             id: true,
@@ -433,6 +541,12 @@ export class TasksService {
             },
           },
         },
+        parent_task: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
       },
     });
 
@@ -448,6 +562,21 @@ export class TasksService {
       position: t.position,
       status: t.status,
       startedAt: t.started_at,
+
+      epic: t.epic
+        ? {
+            id: t.epic.id,
+            title: t.epic.title,
+            color: t.epic.color,
+          }
+        : null,
+
+      parentTask: t.parent_task
+        ? {
+            id: t.parent_task.id,
+            title: t.parent_task.title,
+          }
+        : null,
 
       assignee: t.assignee
         ? {
@@ -492,6 +621,7 @@ export class TasksService {
         position: true,
         status: true,
         started_at: true,
+        epic_id: true,
         parent_task: {
           select: {
             id: true,
@@ -607,6 +737,16 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
+    let epic: Epic | null = null;
+
+    if (t.epic_id) {
+      epic = await this.prisma.epic.findUnique({
+        where: {
+          id: t.epic_id,
+        },
+      });
+    }
+
     return {
       id: t.id,
       title: t.title,
@@ -619,6 +759,19 @@ export class TasksService {
       position: t.position,
       status: t.status,
       startedAt: t.started_at,
+
+      epic: epic
+        ? {
+            id: epic.id,
+            title: epic.title,
+            description: epic.description,
+            createdAt: epic.created_at,
+            color: epic.color,
+            dueDate: epic.due_date,
+            position: epic.position,
+            startDate: epic.start_date,
+          }
+        : null,
 
       parentTask: t.parent_task,
 

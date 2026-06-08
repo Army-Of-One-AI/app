@@ -1,88 +1,123 @@
 "use client";
 
-import useWorkspaceDetailsBySlug from "@/features/workspaces/hooks/useWorkspaceDetailsBySlug";
-import { classNames } from "@/shared/styles/classNames";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type { ElementType } from "react";
+import { useState } from "react";
 import {
+  BarChart3,
   ChevronDown,
+  FileText,
   FolderKanban,
   Inbox,
-  Layers3,
+  LayoutDashboard,
   ListTodo,
   Settings,
+  Sparkles,
   Users,
 } from "lucide-react";
-import Popover from "../Popover";
-import { useState, useSyncExternalStore } from "react";
-import UserPopoverContent from "./UserPopoverContent";
+
 import useCurrentUserInfo from "@/features/auth/hooks/useCurrentUserInfo";
-import Link from "next/link";
+import useWorkspaceDetailsBySlug from "@/features/workspaces/hooks/useWorkspaceDetailsBySlug";
 import useSlugs from "@/shared/hooks/useSlugs";
+import { classNames } from "@/shared/styles/classNames";
+import Popover from "../Popover";
+import UserPopoverContent from "./UserPopoverContent";
 
 type SidebarItem = {
   label: string;
   path: string;
-  icon: React.ReactNode;
+  icon: ElementType;
+  exact?: boolean;
 };
 
 const workspaceItems: SidebarItem[] = [
   {
     label: "Inbox",
     path: "/inbox",
-    icon: <Inbox size={18} />,
-  },
-  {
-    label: "Tasks",
-    path: "/tasks",
-    icon: <ListTodo size={18} />,
+    icon: Inbox,
   },
   {
     label: "Projects",
     path: "/projects",
-    icon: <FolderKanban size={18} />,
-  },
-  {
-    label: "Views",
-    path: "/views",
-    icon: <Layers3 size={18} />,
+    icon: FolderKanban,
+    exact: false,
   },
 ];
 
-const managementItems: SidebarItem[] = [
+const settingsItems: SidebarItem[] = [
   {
-    label: "Teams",
-    path: "/teams",
-    icon: <Users size={18} />,
+    label: "Profile",
+    path: "/settings/profile",
+    icon: Settings,
   },
   {
-    label: "Settings",
-    path: "/settings/profile",
-    icon: <Settings size={18} />,
+    label: "Members",
+    path: "/settings/members",
+    icon: Users,
+  },
+  {
+    label: "Workspace",
+    path: "/settings/workspace",
+    icon: LayoutDashboard,
+  },
+];
+
+const projectItems: SidebarItem[] = [
+  {
+    label: "Overview",
+    path: "",
+    icon: LayoutDashboard,
+    exact: true,
+  },
+  {
+    label: "Summary",
+    path: "/summary",
+    icon: BarChart3,
+  },
+  {
+    label: "Board",
+    path: "/board",
+    icon: ListTodo,
+  },
+  {
+    label: "Epics",
+    path: "/epics",
+    icon: Sparkles,
+  },
+  {
+    label: "Documents",
+    path: "/documents",
+    icon: FileText,
   },
 ];
 
 export default function Sidebar() {
-  const { workspace } = useSlugs();
-  const slug = workspace.slug;
+  const pathname = usePathname();
+  const { workspace, project } = useSlugs();
+  const workspaceSlug = workspace.slug;
+  const projectSlug = project.slug;
 
   const [isOpenPopover, setOpenPopover] = useState(false);
 
-  const { data, isLoading: isLoadingWorkspaceDetails } =
-    useWorkspaceDetailsBySlug(slug);
+  const { data: workspaceDetails, isLoading: isLoadingWorkspaceDetails } =
+    useWorkspaceDetailsBySlug(workspaceSlug);
   const { data: userInfo, isLoading: isLoadingUserInfo } = useCurrentUserInfo();
   const isLoading = isLoadingWorkspaceDetails || isLoadingUserInfo;
 
-  const workspaceName = data?.name ?? "Workspace";
-  const workspaceInitial = workspaceName.charAt(0).toUpperCase();
+  const workspaceName = workspaceDetails?.name ?? "Workspace";
+  const workspaceInitial = getInitials(workspaceName);
+  const userName = userInfo?.fullName || userInfo?.username || userInfo?.email;
+  const projectBasePath =
+    workspaceSlug && projectSlug
+      ? `/${workspaceSlug}/projects/${projectSlug}`
+      : "";
 
-  const buildPath = (path: string) => `/${slug}${path}`;
+  const buildWorkspacePath = (path: string) => `/${workspaceSlug}${path}`;
 
   return (
     <aside
-      className={`
-        absolute inset-y-0 left-0 w-60
-        px-3 py-4
-        ${classNames.text.primary}
-      `}
+      className={`absolute inset-y-0 left-0 flex w-64 flex-col px-3 py-4 ${classNames.text.primary}`}
     >
       <Popover
         isOpen={isOpenPopover}
@@ -93,125 +128,186 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={() => setOpenPopover((curr) => !curr)}
-          className="flex items-center gap-3 px-2 cursor-pointer"
+          className="group flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 text-left shadow-[var(--shadow-soft)] transition hover:bg-[var(--secondary)]"
         >
-          <div
-            className={`
-            flex h-8 w-8 shrink-0 items-center justify-center
-            rounded-full ${classNames.primary.bg}
-            text-sm font-semibold ${classNames.primary.text}
-            `}
-          >
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-semibold text-[var(--on-primary)]">
             {isLoading ? "..." : workspaceInitial}
           </div>
 
-          <div className="flex min-w-0 items-center gap-1 font-semibold text-sm">
-            <span className="truncate">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
               {isLoading ? "Loading..." : workspaceName}
-            </span>
-            <ChevronDown size={14} className="shrink-0" />
+            </p>
+            <p className="truncate text-xs text-[var(--text-secondary)]">
+              {userName || "Account"}
+            </p>
           </div>
+
+          <ChevronDown
+            size={16}
+            className="shrink-0 text-[var(--text-secondary)] transition group-hover:text-[var(--text-primary)]"
+          />
         </button>
       </Popover>
 
-      <nav className="mt-6 flex flex-col gap-1">
+      <nav className="mt-5 space-y-1">
         {workspaceItems.map((item) => (
-          <Link
+          <SidebarLink
             key={item.path}
-            href={buildPath(item.path)}
-            className={`
-              flex items-center gap-3 rounded-lg px-3 py-2 text-sm
-              ${classNames.text.secondary}
-              hover:bg-[var(--secondary)]
-              hover:${classNames.text.primary}
-            `}
-          >
-            <span className="shrink-0">{item.icon}</span>
-            <span>{item.label}</span>
-          </Link>
+            href={buildWorkspacePath(item.path)}
+            icon={item.icon}
+            label={item.label}
+            active={isActivePath(pathname, buildWorkspacePath(item.path), item.exact)}
+          />
         ))}
       </nav>
 
-      <div className="mt-8">
-        <div
-          className={`
-            mb-2 px-3 text-xs font-semibold uppercase tracking-wide
-            ${classNames.text.secondary}
-          `}
-        >
-          Workspace
-        </div>
+      {projectBasePath && (
+        <section className="mt-6">
+          <SectionLabel label="Current project" />
+          <nav className="space-y-1">
+            {projectItems.map((item) => {
+              const href = `${projectBasePath}${item.path}`;
 
-        <nav className="flex flex-col gap-1">
-          {managementItems.map((item) => (
-            <Link
+              return (
+                <SidebarLink
+                  key={item.label}
+                  href={href}
+                  icon={item.icon}
+                  label={item.label}
+                  active={isActivePath(pathname, href, item.exact)}
+                  compact
+                />
+              );
+            })}
+          </nav>
+        </section>
+      )}
+
+      <section className="mt-6">
+        <SectionLabel label="Workspace" />
+        <nav className="space-y-1">
+          {settingsItems.map((item) => (
+            <SidebarLink
               key={item.path}
-              href={buildPath(item.path)}
-              className={`
-                flex items-center gap-3 rounded-lg px-3 py-2 text-sm
-                ${classNames.text.secondary}
-                hover:bg-[var(--secondary)]
-                hover:${classNames.text.primary}
-              `}
-            >
-              <span className="shrink-0">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
+              href={buildWorkspacePath(item.path)}
+              icon={item.icon}
+              label={item.label}
+              active={isActivePath(pathname, buildWorkspacePath(item.path), item.exact)}
+            />
           ))}
         </nav>
-      </div>
+      </section>
 
-      <div className="mt-8">
-        <div
-          className={`
-            mb-2 flex items-center gap-1 px-3 text-xs font-semibold uppercase tracking-wide
-            ${classNames.text.secondary}
-          `}
-        >
-          Your teams
-          <ChevronDown size={12} />
+      <div className="mt-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-soft)]">
+        <div className="flex items-center gap-3">
+          <UserAvatar userInfo={userInfo} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+              {userName || "Signed in"}
+            </p>
+            <p className="truncate text-xs text-[var(--text-secondary)]">
+              {userInfo?.email ?? "Workspace member"}
+            </p>
+          </div>
         </div>
-
-        <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2">
-          <div className="h-4 w-4 rounded bg-[var(--primary)]" />
-          <span className="truncate text-sm font-medium">{workspaceName}</span>
-          <ChevronDown size={12} className={classNames.text.secondary} />
-        </div>
-
-        <nav className="flex flex-col gap-1">
-          {[
-            {
-              label: "Issues",
-              path: "/issues",
-              icon: <ListTodo size={18} />,
-            },
-            {
-              label: "Projects",
-              path: "/team-projects",
-              icon: <FolderKanban size={18} />,
-            },
-            {
-              label: "Views",
-              path: "/team-views",
-              icon: <Layers3 size={18} />,
-            },
-          ].map((item) => (
-            <Link
-              key={item.path}
-              href={buildPath(item.path)}
-              className={`
-                flex items-center gap-3 rounded-lg px-3 py-2 text-sm
-                ${classNames.text.secondary}
-                hover:bg-[var(--secondary)]
-                hover:${classNames.text.primary}
-              `}
-            >
-              <span className="shrink-0">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
       </div>
     </aside>
   );
+}
+
+function SidebarLink({
+  href,
+  icon: Icon,
+  label,
+  active,
+  compact = false,
+}: {
+  href: string;
+  icon: ElementType;
+  label: string;
+  active: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group flex items-center gap-3 rounded-xl px-3 text-sm font-medium transition ${
+        compact ? "py-2" : "py-2.5"
+      } ${
+        active
+          ? "bg-[var(--secondary)] text-[var(--text-primary)] shadow-xs"
+          : "text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
+      }`}
+    >
+      <span
+        className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${
+          active
+            ? "bg-[var(--surface)] text-[var(--primary)]"
+            : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
+        }`}
+      >
+        <Icon size={16} />
+      </span>
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+      {label}
+    </div>
+  );
+}
+
+function UserAvatar({
+  userInfo,
+}: {
+  userInfo?: {
+    avatarImageURL?: string | null;
+    fullName?: string | null;
+    username?: string | null;
+    email?: string | null;
+  };
+}) {
+  const name = userInfo?.fullName || userInfo?.username || userInfo?.email || "";
+
+  if (userInfo?.avatarImageURL) {
+    return (
+      <div
+        aria-label={name}
+        className="size-9 rounded-full bg-cover bg-center"
+        role="img"
+        style={{
+          backgroundImage: `url("${userInfo.avatarImageURL}")`,
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-semibold text-[var(--text-secondary)]">
+      {getInitials(name || "User")}
+    </div>
+  );
+}
+
+function isActivePath(pathname: string, href: string, exact = false) {
+  if (exact) {
+    return pathname === href;
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function getInitials(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const initials = words
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
+
+  return initials || "?";
 }
