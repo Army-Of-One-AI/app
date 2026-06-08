@@ -25,6 +25,10 @@ const projectNavItems = [
     href: "/board",
   },
   {
+    label: "Timeline",
+    href: "/timeline",
+  },
+  {
     label: "Epics",
     href: "/epics",
   },

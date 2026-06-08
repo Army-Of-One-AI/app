@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Target,
   Trash2,
+  ArrowRight,
   X,
 } from "lucide-react";
 import { ElementType, ReactNode, useEffect, useMemo, useState } from "react";
@@ -80,6 +81,12 @@ export default function SprintsPage() {
     },
     enabled: !!workspaceSlug && !!projectSlug,
   });
+
+  const viewSprintTasks = (sprintId: string) => {
+    router.push(
+      `/${workspaceSlug}/projects/${projectSlug}/board?sprint=${sprintId}`
+    );
+  };
 
   const openCreateModal = () => {
     setIsCreating(true);
@@ -285,9 +292,15 @@ export default function SprintsPage() {
             Completed: grouped.completed.length,
             Canceled: grouped.canceled.length,
           }}
-          onStart={(id) => startSprintMutation.mutate(id)}
+          activeSprintId={activeSprint?.id ?? null}
+          onStart={(id) => {
+            if (activeSprint && activeSprint.id !== id) return;
+
+            startSprintMutation.mutate(id);
+          }}
           onCancel={(id) => cancelSprintMutation.mutate(id)}
           onDelete={(id) => deleteSprintMutation.mutate(id)}
+          onViewTasks={viewSprintTasks}
         />
       )}
     </div>
@@ -410,17 +423,21 @@ function SprintsTablePanel({
   activeFilter,
   counts,
   onFilterChange,
+  activeSprintId,
   onStart,
   onCancel,
   onDelete,
+  onViewTasks,
 }: {
   sprints: Sprint[];
   activeFilter: SprintFilter;
   counts: Record<SprintFilter, number>;
   onFilterChange: (filter: SprintFilter) => void;
+  activeSprintId: string | null;
   onStart: (id: string) => void;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
+  onViewTasks: (id: string) => void;
 }) {
   const filters: SprintFilter[] = [
     "All",
@@ -485,9 +502,11 @@ function SprintsTablePanel({
       ) : (
         <SprintTable
           sprints={sprints}
+          activeSprintId={activeSprintId}
           onStart={onStart}
           onCancel={onCancel}
           onDelete={onDelete}
+          onViewTasks={onViewTasks}
         />
       )}
     </section>
@@ -496,14 +515,18 @@ function SprintsTablePanel({
 
 function SprintTable({
   sprints,
+  activeSprintId,
   onStart,
   onCancel,
   onDelete,
+  onViewTasks,
 }: {
   sprints: Sprint[];
+  activeSprintId: string | null;
   onStart: (id: string) => void;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
+  onViewTasks: (id: string) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -524,9 +547,11 @@ function SprintTable({
             <SprintRow
               key={sprint.id}
               sprint={sprint}
+              activeSprintId={activeSprintId}
               onStart={onStart}
               onCancel={onCancel}
               onDelete={onDelete}
+              onViewTasks={onViewTasks}
             />
           ))}
         </tbody>
@@ -537,15 +562,24 @@ function SprintTable({
 
 function SprintRow({
   sprint,
+  activeSprintId,
   onStart,
   onCancel,
   onDelete,
+  onViewTasks,
 }: {
   sprint: Sprint;
+  activeSprintId: string | null;
   onStart: (id: string) => void;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
+  onViewTasks: (id: string) => void;
 }) {
+  const cannotStartBecauseAnotherSprintIsActive =
+    sprint.status === "Planned" &&
+    activeSprintId !== null &&
+    activeSprintId !== sprint.id;
+
   return (
     <tr className="group border-b border-[var(--border)] last:border-b-0 transition hover:bg-[var(--secondary)]/40">
       <td className="max-w-[360px] px-5 py-4">
@@ -597,7 +631,12 @@ function SprintRow({
         <div className="flex justify-end gap-2">
           {sprint.status === "Planned" && (
             <IconActionButton
-              label="Start sprint"
+              disabled={cannotStartBecauseAnotherSprintIsActive}
+              label={
+                cannotStartBecauseAnotherSprintIsActive
+                  ? "Finish or cancel the active sprint before starting another"
+                  : "Start sprint"
+              }
               onClick={() => onStart(sprint.id)}
             >
               <Play size={14} />
@@ -612,6 +651,13 @@ function SprintRow({
               <RotateCcw size={14} />
             </IconActionButton>
           )}
+
+          <IconActionButton
+            label="View tasks"
+            onClick={() => onViewTasks(sprint.id)}
+          >
+            <ArrowRight size={14} />
+          </IconActionButton>
 
           <IconActionButton
             danger
@@ -981,21 +1027,29 @@ function IconActionButton({
   onClick,
   label,
   danger = false,
+  disabled = false,
 }: {
   children: ReactNode;
   onClick: () => void;
   label: string;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
-      onClick={onClick}
+      disabled={disabled}
+      onClick={() => {
+        if (disabled) return;
+        onClick();
+      }}
       className={[
         "inline-flex size-9 items-center justify-center rounded-xl border text-sm font-medium transition",
-        danger
+        disabled
+          ? "cursor-not-allowed border-[var(--border)] text-[var(--text-secondary)] opacity-45"
+          : danger
           ? "border-red-500/20 text-red-500 hover:bg-red-500/10"
           : "border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]",
       ].join(" ")}

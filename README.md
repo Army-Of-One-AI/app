@@ -4,6 +4,39 @@ Army Of One AI is an AI-oriented project management application for turning work
 
 The current product is workspace and project centered. Users sign in, enter a workspace, create projects, manage task boards, review project summaries, organize delivery work through epics and sprints, maintain supporting documents, and collaborate through task comments and mentions.
 
+## Showcase
+
+<table>
+  <tr>
+    <td><img src="resources/showcase-01.png" alt="Army Of One AI showcase 01" /></td>
+    <td><img src="resources/showcase-02.png" alt="Army Of One AI showcase 02" /></td>
+  </tr>
+  <tr>
+    <td><img src="resources/showcase-03.png" alt="Army Of One AI showcase 03" /></td>
+    <td><img src="resources/showcase-04.png" alt="Army Of One AI showcase 04" /></td>
+  </tr>
+  <tr>
+    <td><img src="resources/showcase-05.png" alt="Army Of One AI showcase 05" /></td>
+    <td><img src="resources/showcase-06.png" alt="Army Of One AI showcase 06" /></td>
+  </tr>
+  <tr>
+    <td><img src="resources/showcase-07.png" alt="Army Of One AI showcase 07" /></td>
+    <td><img src="resources/showcase-08.png" alt="Army Of One AI showcase 08" /></td>
+  </tr>
+  <tr>
+    <td><img src="resources/showcase-09.png" alt="Army Of One AI showcase 09" /></td>
+    <td><img src="resources/showcase-10.png" alt="Army Of One AI showcase 10" /></td>
+  </tr>
+  <tr>
+    <td><img src="resources/showcase-11.png" alt="Army Of One AI showcase 11" /></td>
+    <td><img src="resources/showcase-12.png" alt="Army Of One AI showcase 12" /></td>
+  </tr>
+  <tr>
+    <td><img src="resources/showcase-13.png" alt="Army Of One AI showcase 13" /></td>
+    <td><img src="resources/showcase-14.png" alt="Army Of One AI showcase 14" /></td>
+  </tr>
+</table>
+
 ## Repository Structure
 
 ```text

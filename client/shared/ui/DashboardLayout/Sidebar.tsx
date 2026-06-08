@@ -6,6 +6,7 @@ import type { ElementType } from "react";
 import { useState } from "react";
 import {
   BarChart3,
+  CalendarDays,
   ChevronDown,
   FileText,
   FolderKanban,
@@ -80,6 +81,11 @@ const projectItems: SidebarItem[] = [
     label: "Board",
     path: "/board",
     icon: ListTodo,
+  },
+  {
+    label: "Timeline",
+    path: "/timeline",
+    icon: CalendarDays,
   },
   {
     label: "Epics",
