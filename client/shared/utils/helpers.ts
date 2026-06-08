@@ -1,3 +1,5 @@
+import { ProjectStatus } from "../types/enums";
+
 type RichTextValue = {
   html: string;
   plainText: string;
@@ -64,4 +66,25 @@ export function formatRelativeTime(value: string) {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return `${days}d ago`;
+}
+
+export function formatStatus(value: ProjectStatus) {
+  return value.split("_").join(" ");
+}
+
+export function getInitials(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const initials = words
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
+
+  return initials || "?";
+}
+
+export function isSameSet(a: readonly string[], b: readonly string[]) {
+  if (a.length !== b.length) return false;
+  const values = new Set(a);
+
+  return b.every((item) => values.has(item));
 }

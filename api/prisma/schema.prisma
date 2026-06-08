@@ -93,6 +93,13 @@ enum InboxItemType {
   DUE_DATE_CHANGED
 }
 
+enum SprintStatus {
+  Planned
+  Active
+  Completed
+  Canceled
+}
+
 model Workspace {
   id String @id @default(uuid())
 
@@ -149,6 +156,8 @@ model User {
 
   inboxItems     InboxItem[]
   sentInboxItems InboxItem[] @relation("InboxActor")
+
+  taskComments TaskComment[]
 
   lastUsedWorkspace      Workspace? @relation(fields: [last_used_workspace_id], references: [id], onDelete: SetNull)
   last_used_workspace_id String?
@@ -233,6 +242,7 @@ model Project {
   documents  Document[]
   epics      Epic[]
   inboxItems InboxItem[]
+  sprints    Sprint[]
 
   created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
@@ -297,11 +307,15 @@ model Task {
   epic    Epic?   @relation(fields: [epic_id], references: [id], onDelete: SetNull)
   epic_id String?
 
+  sprint    Sprint? @relation(fields: [sprint_id], references: [id])
+  sprint_id String?
+
   inboxItems InboxItem[]
 
-  created_at DateTime  @default(now())
-  updated_at DateTime? @updatedAt
-  deleted_at DateTime?
+  created_at   DateTime      @default(now())
+  updated_at   DateTime?     @updatedAt
+  deleted_at   DateTime?
+  taskComments TaskComment[]
 
   @@index([project_id])
   @@index([assignee_id])
@@ -449,4 +463,55 @@ model InboxItem {
   @@index([project_id, created_at(sort: Desc)])
   @@index([task_id])
   @@index([invite_id])
+}
+
+model Sprint {
+  id String @id @default(uuid())
+
+  name String
+  goal String?
+
+  status SprintStatus @default(Planned)
+
+  start_date DateTime
+  end_date   DateTime
+
+  completed_at DateTime?
+
+  project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  project_id String
+
+  tasks Task[]
+
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+  deleted_at DateTime?
+
+  @@index([project_id])
+  @@index([project_id, status])
+  @@index([project_id, start_date])
+  @@index([project_id, end_date])
+}
+
+model TaskComment {
+  id String @id @default(uuid())
+
+  content Json
+
+  task    Task   @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  task_id String
+
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id String
+
+  reply_to_comment    TaskComment? @relation(fields: [reply_to_comment_id], references: [id], name: "TaskCommentReplies", onDelete: Cascade)
+  reply_to_comment_id String?
+
+  replied_comments TaskComment[] @relation("TaskCommentReplies")
+
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  @@index([task_id, reply_to_comment_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([reply_to_comment_id, created_at(sort: Asc), id(sort: Asc)])
 }

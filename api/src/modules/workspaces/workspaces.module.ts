@@ -9,6 +9,8 @@ import { DocumentsModule } from '../documents/documents.module';
 import { EmailsModule } from '../emails/emails.module';
 import { ProjectEpicsModule } from '../project-epics/project-epics.module';
 import { InboxItemsModule } from '../inbox-items/inbox-items.module';
+import { SprintsModule } from '../sprints/sprints.module';
+import { TaskCommentsModule } from '../task-comments/task-comments.module';
 
 @Module({
   controllers: [WorkspacesController],
@@ -20,6 +22,8 @@ import { InboxItemsModule } from '../inbox-items/inbox-items.module';
     EmailsModule,
     ProjectEpicsModule,
     InboxItemsModule,
+    SprintsModule,
+    TaskCommentsModule,
   ],
   providers: [WorkspacesService, PrismaService],
   exports: [WorkspacesService],

@@ -29,6 +29,8 @@ import Link from "next/link";
 import useTaskActivities from "@/features/tasks/hooks/useTaskActivities";
 import useSlugs from "@/shared/hooks/useSlugs";
 import SearchBar from "@/shared/ui/SearchBar";
+import { Sprint } from "@/features/sprints/types";
+import TaskComments from "@/shared/ui/TaskComments";
 
 type Props = {
   taskId: string;
@@ -36,6 +38,7 @@ type Props = {
   canAssignTask: boolean;
   members: ProjectMember[];
   epics: Epic[];
+  sprints: Sprint[];
   onClose: () => void;
   onUpdate: (task: Task) => void;
   onClickSubtask: (subtask: Task) => void;
@@ -62,6 +65,7 @@ export default function TaskDetailsModal({
   onClose,
   onUpdate,
   onClickSubtask,
+  sprints,
   epics,
 }: Props) {
   const queryClient = useQueryClient();
@@ -181,6 +185,28 @@ export default function TaskDetailsModal({
     return Math.round((doneCount / subtasks.length) * 100);
   }, [subtasks]);
 
+  const [sprintId, setSprintId] = useState("");
+  const [isSprintOpen, setIsSprintOpen] = useState(false);
+  const [sprintSearch, setSprintSearch] = useState("");
+
+  const selectedSprint = useMemo(() => {
+    if (!sprints || sprints.length === 0) return null;
+
+    return sprints.find((sprint) => sprint.id === sprintId) ?? null;
+  }, [sprints, sprintId]);
+
+  const filteredSprints = useMemo(() => {
+    if (!sprints || sprints.length === 0) return [];
+
+    const keyword = sprintSearch.toLowerCase().trim();
+
+    if (!keyword) return sprints;
+
+    return sprints.filter((sprint) =>
+      sprint.name.toLowerCase().includes(keyword)
+    );
+  }, [sprints, sprintSearch]);
+
   useEffect(() => {
     if (!typedTask) return;
 
@@ -204,6 +230,10 @@ export default function TaskDetailsModal({
     setSubtaskAssigneeId("");
 
     setLoadedTaskId(typedTask.id);
+
+    setSprintId(typedTask.sprint?.id ?? "");
+    setIsSprintOpen(false);
+    setSprintSearch("");
   }, [typedTask]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -224,6 +254,7 @@ export default function TaskDetailsModal({
       estimate: estimate ? Number(estimate) : null,
       assigneeId: assigneeId || null,
       epicId: selectedEpic ? selectedEpic.id : null,
+      sprintId: selectedSprint ? selectedSprint.id : null,
     });
 
     onUpdate(updatedTask);
@@ -231,6 +262,12 @@ export default function TaskDetailsModal({
     await Promise.allSettled([
       queryClient.invalidateQueries({
         queryKey: ["get-task-activities", workspaceSlug, projectSlug, taskId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["get-tasks-by-project-slug", projectSlug, workspaceSlug],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["project-sprints", workspaceSlug, projectSlug],
       }),
       refetchTaskDetails(),
     ]);
@@ -491,6 +528,13 @@ export default function TaskDetailsModal({
                 )}
               </div>
             </div>
+
+            <TaskComments
+              workspaceSlug={workspaceSlug}
+              projectSlug={projectSlug}
+              taskId={taskId}
+              projectMembers={members}
+            />
 
             <div>
               <h3 className="mb-3 font-semibold text-[var(--text-primary)]">
@@ -819,6 +863,108 @@ export default function TaskDetailsModal({
                   </div>
                 </DetailRow>
 
+                <DetailRow label="Sprint">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setIsSprintOpen((curr) => !curr)}
+                      className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {selectedSprint ? (
+                        <>
+                          <span className="min-w-0 flex-1 truncate text-[var(--text-primary)]">
+                            {selectedSprint.name}
+                          </span>
+
+                          <span className="rounded-md bg-[var(--secondary)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
+                            {selectedSprint.status}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[var(--text-secondary)]">
+                          No sprint
+                        </span>
+                      )}
+                    </button>
+
+                    {isSprintOpen && (
+                      <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg">
+                        <div className="border-b border-[var(--border)] p-2">
+                          <SearchBar
+                            autoFocus
+                            value={sprintSearch}
+                            onChange={setSprintSearch}
+                            placeholder="Search sprint..."
+                          />
+                        </div>
+
+                        <div className="max-h-60 overflow-y-auto py-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSprintId("");
+                              setIsSprintOpen(false);
+                              setSprintSearch("");
+                            }}
+                            className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
+                          >
+                            <span className="text-sm text-[var(--text-secondary)]">
+                              No sprint
+                            </span>
+                          </button>
+
+                          {filteredSprints.map((sprint) => {
+                            const isSelected = sprint.id === sprintId;
+
+                            return (
+                              <button
+                                key={sprint.id}
+                                type="button"
+                                onClick={() => {
+                                  setSprintId(sprint.id);
+                                  setIsSprintOpen(false);
+                                  setSprintSearch("");
+                                }}
+                                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--secondary)]"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium text-[var(--text-primary)]">
+                                    {sprint.name}
+                                  </p>
+
+                                  <p className="truncate text-xs text-[var(--text-secondary)]">
+                                    {formatSprintRange(
+                                      sprint.startDate,
+                                      sprint.endDate
+                                    )}
+                                  </p>
+                                </div>
+
+                                <span className="rounded-md bg-[var(--secondary)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
+                                  {sprint.status}
+                                </span>
+
+                                {isSelected && (
+                                  <span className="text-xs font-semibold text-[var(--primary)]">
+                                    Selected
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+
+                          {filteredSprints.length === 0 && (
+                            <div className="px-3 py-5 text-center text-sm text-[var(--text-secondary)]">
+                              No sprints found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </DetailRow>
+
                 <DetailRow label="Priority">
                   <select
                     disabled={disabled}
@@ -1095,4 +1241,10 @@ function MemberAvatar({
 
 function getInitial(value: string) {
   return value.trim().charAt(0).toUpperCase();
+}
+
+function formatSprintRange(startDate: string, endDate: string) {
+  return `${new Date(startDate).toLocaleDateString()} - ${new Date(
+    endDate
+  ).toLocaleDateString()}`;
 }

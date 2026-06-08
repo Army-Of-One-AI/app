@@ -14,6 +14,8 @@ import { InvitationsModule } from './modules/invitations/invitations.module';
 import { ClickHouseModule } from './modules/click-house/click-house.module';
 import { ProjectEpicsModule } from './modules/project-epics/project-epics.module';
 import { InboxItemsModule } from './modules/inbox-items/inbox-items.module';
+import { SprintsModule } from './modules/sprints/sprints.module';
+import { TaskCommentsModule } from './modules/task-comments/task-comments.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { InboxItemsModule } from './modules/inbox-items/inbox-items.module';
     ClickHouseModule,
     ProjectEpicsModule,
     InboxItemsModule,
+    SprintsModule,
+    TaskCommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

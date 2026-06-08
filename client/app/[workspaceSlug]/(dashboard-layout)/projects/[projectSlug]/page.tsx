@@ -16,7 +16,9 @@ import {
   FileText,
   Layers3,
   ListTodo,
+  Sparkles,
   SquareCheck,
+  TimerReset,
   Users,
 } from "lucide-react";
 
@@ -136,7 +138,9 @@ export default function ProjectOverviewPage() {
     {
       label: "Completed at",
       value: formatDate(project.completedAt),
-      hint: project.completedAt ? getDateHint(project.completedAt, "Completed") : "Not completed",
+      hint: project.completedAt
+        ? getDateHint(project.completedAt, "Completed")
+        : "Not completed",
       icon: CheckCircle2,
     },
   ];
@@ -158,7 +162,13 @@ export default function ProjectOverviewPage() {
       label: "Epics",
       description: "Group tasks into larger initiatives.",
       href: `${projectBaseUrl}/epics`,
-      icon: Layers3,
+      icon: Sparkles,
+    },
+    {
+      label: "Sprints",
+      description: "Group tasks into larger initiatives.",
+      href: `${projectBaseUrl}/sprints`,
+      icon: TimerReset,
     },
     {
       label: "Documents",
@@ -197,7 +207,9 @@ export default function ProjectOverviewPage() {
               {description}
             </p>
 
-            <div className={`mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs ${mutedTextClass}`}>
+            <div
+              className={`mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs ${mutedTextClass}`}
+            >
               <span>Created {formatDate(project.createdAt)}</span>
               <span>Updated {formatDate(project.updatedAt)}</span>
             </div>
@@ -276,11 +288,15 @@ export default function ProjectOverviewPage() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className={`text-sm ${mutedTextClass}`}>{item.label}</p>
+                      <p className={`text-sm ${mutedTextClass}`}>
+                        {item.label}
+                      </p>
                       <p className="truncate font-medium">{item.value}</p>
                     </div>
                   </div>
-                  <p className={`mt-3 text-xs ${mutedTextClass}`}>{item.hint}</p>
+                  <p className={`mt-3 text-xs ${mutedTextClass}`}>
+                    {item.hint}
+                  </p>
                 </div>
               );
             })}
@@ -372,7 +388,9 @@ export default function ProjectOverviewPage() {
                   <div className={iconBoxClass}>
                     <Icon className="size-4" />
                   </div>
-                  <ArrowRight className={`size-4 transition group-hover:translate-x-0.5 ${mutedTextClass}`} />
+                  <ArrowRight
+                    className={`size-4 transition group-hover:translate-x-0.5 ${mutedTextClass}`}
+                  />
                 </div>
                 <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                   {link.label}
@@ -452,7 +470,10 @@ function ProjectOverviewSkeleton() {
           <div className={`mb-5 h-5 w-32 ${skeletonClass}`} />
           <div className="grid gap-3 md:grid-cols-3">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="rounded-xl border border-[var(--border)] p-4">
+              <div
+                key={index}
+                className="rounded-xl border border-[var(--border)] p-4"
+              >
                 <div className={`size-10 rounded-xl ${skeletonClass}`} />
                 <div className={`mt-4 h-4 w-24 ${skeletonClass}`} />
                 <div className={`mt-2 h-4 w-20 ${skeletonClass}`} />

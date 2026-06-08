@@ -29,6 +29,10 @@ const projectNavItems = [
     href: "/epics",
   },
   {
+    label: "Sprints",
+    href: "/sprints",
+  },
+  {
     label: "Documents",
     href: "/documents",
   },
@@ -98,7 +102,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               setOpenPopover(false);
             }}
             isOpen={isOpenPopover}
-            content={<ProjectActions />}
+            content={
+              <ProjectActions closePopover={() => setOpenPopover(false)} />
+            }
           >
             <button
               onClick={() => setOpenPopover((curr) => !curr)}

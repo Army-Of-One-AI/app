@@ -14,6 +14,7 @@ import {
   ListTodo,
   Settings,
   Sparkles,
+  TimerReset,
   Users,
 } from "lucide-react";
 
@@ -84,6 +85,11 @@ const projectItems: SidebarItem[] = [
     label: "Epics",
     path: "/epics",
     icon: Sparkles,
+  },
+  {
+    label: "Sprints",
+    path: "/sprints",
+    icon: TimerReset,
   },
   {
     label: "Documents",
@@ -157,7 +163,11 @@ export default function Sidebar() {
             href={buildWorkspacePath(item.path)}
             icon={item.icon}
             label={item.label}
-            active={isActivePath(pathname, buildWorkspacePath(item.path), item.exact)}
+            active={isActivePath(
+              pathname,
+              buildWorkspacePath(item.path),
+              item.exact
+            )}
           />
         ))}
       </nav>
@@ -193,7 +203,11 @@ export default function Sidebar() {
               href={buildWorkspacePath(item.path)}
               icon={item.icon}
               label={item.label}
-              active={isActivePath(pathname, buildWorkspacePath(item.path), item.exact)}
+              active={isActivePath(
+                pathname,
+                buildWorkspacePath(item.path),
+                item.exact
+              )}
             />
           ))}
         </nav>
@@ -272,7 +286,8 @@ function UserAvatar({
     email?: string | null;
   };
 }) {
-  const name = userInfo?.fullName || userInfo?.username || userInfo?.email || "";
+  const name =
+    userInfo?.fullName || userInfo?.username || userInfo?.email || "";
 
   if (userInfo?.avatarImageURL) {
     return (

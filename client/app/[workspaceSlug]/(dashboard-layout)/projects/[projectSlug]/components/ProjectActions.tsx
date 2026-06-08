@@ -14,35 +14,25 @@ import {
   ChevronRight,
   Loader2,
   Search,
+  Sparkles,
+  SquareCheck,
+  TimerReset,
   Trash,
   UserPlus,
   UsersRound,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-function MemberSkeleton() {
-  return (
-    <div className="space-y-1 px-1 py-1">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <div
-          key={index}
-          className="flex items-center gap-3 rounded-lg px-3 py-2"
-        >
-          <div className="h-8 w-8 animate-pulse rounded-full bg-(--border)" />
-          <div className="flex-1 space-y-2">
-            <div className="h-3 w-28 animate-pulse rounded bg-(--border)" />
-            <div className="h-2.5 w-20 animate-pulse rounded bg-(--border)" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default function ProjectActions() {
+export default function ProjectActions({
+  closePopover,
+}: {
+  closePopover: () => void;
+}) {
   const slugs = useSlugs();
+  const router = useRouter();
   const { userInfo } = useAuthentication();
 
   const [isOpenAddMember, setOpenAddMember] = useState(false);
@@ -263,6 +253,63 @@ export default function ProjectActions() {
           </AnimatePresence>
         </button>
 
+        <button
+          type="button"
+          onClick={() => {
+            router.push(
+              `/${slugs.workspace.slug}/projects/${slugs.project.slug}/board?action=create`
+            );
+            closePopover();
+          }}
+          className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-1 text-left text-sm text-(--text-primary) transition-all hover:bg-(--border)"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60 text-(--text-primary)">
+            <SquareCheck size={16} />
+          </span>
+
+          <span className="flex-1">
+            <span className="block font-medium">Create new task</span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            router.push(
+              `/${slugs.workspace.slug}/projects/${slugs.project.slug}/epics?action=create`
+            );
+            closePopover();
+          }}
+          className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-1 text-left text-sm text-(--text-primary) transition-all hover:bg-(--border)"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60 text-(--text-primary)">
+            <Sparkles size={16} />
+          </span>
+
+          <span className="flex-1">
+            <span className="block font-medium">Create new epic</span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            router.push(
+              `/${slugs.workspace.slug}/projects/${slugs.project.slug}/sprints?action=create`
+            );
+            closePopover();
+          }}
+          className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-1 text-left text-sm text-(--text-primary) transition-all hover:bg-(--border)"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60 text-(--text-primary)">
+            <TimerReset size={16} />
+          </span>
+
+          <span className="flex-1">
+            <span className="block font-medium">Create new sprint</span>
+          </span>
+        </button>
+
         <div className="my-1 h-px w-full bg-(--border)" />
 
         <button
@@ -440,5 +487,24 @@ export default function ProjectActions() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function MemberSkeleton() {
+  return (
+    <div className="space-y-1 px-1 py-1">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div
+          key={index}
+          className="flex items-center gap-3 rounded-lg px-3 py-2"
+        >
+          <div className="h-8 w-8 animate-pulse rounded-full bg-(--border)" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-28 animate-pulse rounded bg-(--border)" />
+            <div className="h-2.5 w-20 animate-pulse rounded bg-(--border)" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

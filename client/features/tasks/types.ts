@@ -1,4 +1,5 @@
 import { TaskActivity, TaskPriority, TaskStatus } from "@/shared/types/enums";
+import { Sprint } from "../sprints/types";
 
 export type TaskUser = {
   id: string;
@@ -33,6 +34,8 @@ export type Task = {
   assignee: TaskUser | null;
   creator: TaskUser | null;
 
+  sprint?: Sprint | null;
+
   subtasks: Task[];
 
   epic?: {
@@ -64,6 +67,7 @@ export type TaskActivityItem = {
 
 export type TaskDetails = Task & {
   epic: Epic | null;
+  sprint?: Sprint | null;
 };
 
 export type GetTaskActivitiesParams = {

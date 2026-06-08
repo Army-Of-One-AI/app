@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { Epic } from "@/features/tasks/types";
@@ -14,11 +15,13 @@ import {
   Plus,
   RotateCcw,
   SortAsc,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import CreateEpicModal from "./components/CreateEpicModal";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type EpicStatus = "Planned" | "In_Progress" | "Done";
 type SortMode = "position" | "dueDate" | "title" | "status";
@@ -37,7 +40,8 @@ const statusConfig: Record<
 > = {
   Planned: {
     label: "Planned",
-    className: "bg-[var(--task-status-backlog-bg)] text-[var(--task-status-backlog-text)]",
+    className:
+      "bg-[var(--task-status-backlog-bg)] text-[var(--task-status-backlog-text)]",
   },
   In_Progress: {
     label: "In progress",
@@ -46,16 +50,12 @@ const statusConfig: Record<
   },
   Done: {
     label: "Done",
-    className: "bg-[var(--task-status-done-bg)] text-[var(--task-status-done-text)]",
+    className:
+      "bg-[var(--task-status-done-bg)] text-[var(--task-status-done-text)]",
   },
 };
 
-const statusOptions: StatusFilter[] = [
-  "All",
-  "Planned",
-  "In_Progress",
-  "Done",
-];
+const statusOptions: StatusFilter[] = ["All", "Planned", "In_Progress", "Done"];
 
 const sortOptions: { label: string; value: SortMode }[] = [
   { label: "Position", value: "position" },
@@ -65,8 +65,12 @@ const sortOptions: { label: string; value: SortMode }[] = [
 ];
 
 export default function ProjectEpicsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const action = searchParams.get("action");
   const slugs = useSlugs();
   const queryClient = useQueryClient();
+
   const workspaceSlug = slugs.workspace.slug;
   const projectSlug = slugs.project.slug;
   const projectBaseUrl = `/${workspaceSlug}/projects/${projectSlug}`;
@@ -127,7 +131,7 @@ export default function ProjectEpicsPage() {
     };
   }, [epics]);
 
-  const hasActiveFilters = search.trim() || statusFilter !== "All";
+  const hasActiveFilters = Boolean(search.trim() || statusFilter !== "All");
 
   const resetFilters = () => {
     setSearch("");
@@ -139,6 +143,24 @@ export default function ProjectEpicsPage() {
       queryKey: ["get-project-epics", workspaceSlug, projectSlug],
     });
   };
+
+  useEffect(() => {
+    if (action === "create") {
+      setIsCreateOpen(true);
+    }
+  }, [action]);
+
+  useEffect(() => {
+    if (!isCreateOpen) {
+      router.push(
+        `/${slugs.workspace.slug}/projects/${slugs.project.slug}/epics`
+      );
+    } else {
+      router.push(
+        `/${slugs.workspace.slug}/projects/${slugs.project.slug}/epics?action=create`
+      );
+    }
+  }, [isCreateOpen, router, slugs.workspace.slug, slugs.project.slug]);
 
   if (isLoading) {
     return <EpicsSkeleton />;
@@ -153,15 +175,10 @@ export default function ProjectEpicsPage() {
   }
 
   return (
-    <div className="space-y-5 bg-[var(--background)] p-6">
+    <div className="min-h-full space-y-5 bg-[var(--background)] p-6">
       <section className={`${cardClass} p-6`}>
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="mb-3 flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-              <Layers3 size={16} />
-              <span>{projectSlug}</span>
-            </div>
-
             <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
               Epics
             </h1>
@@ -183,88 +200,109 @@ export default function ProjectEpicsPage() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard icon={Layers3} label="Total epics" value={stats.total} />
+          <SummaryCard
+            icon={Sparkles}
+            label="Total epics"
+            value={stats.total}
+          />
           <SummaryCard icon={Clock} label="Planned" value={stats.planned} />
           <SummaryCard
             icon={CalendarDays}
             label="In progress"
             value={stats.inProgress}
           />
-          <SummaryCard icon={CheckCircle2} label="Completed" value={stats.done} />
+          <SummaryCard
+            icon={CheckCircle2}
+            label="Completed"
+            value={stats.done}
+          />
         </div>
       </section>
 
       <section className={`${cardClass} overflow-hidden`}>
-        <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 xl:flex-row xl:items-center xl:justify-between">
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder="Search epics..."
-            className="max-w-md"
-          />
+        <div className="border-b border-[var(--border)] p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search epics..."
+              className="max-w-md"
+            />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-xl border border-[var(--border)] bg-[var(--background)] p-1">
-              {statusOptions.map((status) => (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-xl border border-[var(--border)] bg-[var(--background)] p-1">
+                {statusOptions.map((status) => {
+                  const active = statusFilter === status;
+
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setStatusFilter(status)}
+                      className={[
+                        "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
+                        active
+                          ? "bg-[var(--primary)] text-[var(--on-primary)]"
+                          : "text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]",
+                      ].join(" ")}
+                    >
+                      {status === "All" ? "All" : statusConfig[status].label}
+
+                      <span
+                        className={[
+                          "rounded-full px-1.5 py-0.5 text-[10px]",
+                          active
+                            ? "bg-white/20 text-[var(--on-primary)]"
+                            : "bg-[var(--secondary)] text-[var(--text-secondary)]",
+                        ].join(" ")}
+                      >
+                        {getStatusCount(status, stats)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm text-[var(--text-secondary)]">
+                <SortAsc size={15} />
+                <Select
+                  items={sortOptions}
+                  selectedValue={sortMode}
+                  onItemClicked={(value) => {
+                    if (value) setSortMode(value as SortMode);
+                  }}
+                  className="w-36"
+                  placeholder="Sort"
+                />
+              </div>
+
+              {hasActiveFilters && (
                 <button
-                  key={status}
                   type="button"
-                  onClick={() => setStatusFilter(status)}
-                  className={`h-8 rounded-lg px-3 text-xs font-medium transition ${
-                    statusFilter === status
-                      ? "bg-[var(--primary)] text-[var(--on-primary)]"
-                      : "text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
-                  }`}
+                  onClick={resetFilters}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
                 >
-                  {status === "All" ? "All" : statusConfig[status].label}
+                  <RotateCcw size={15} />
+                  Reset
                 </button>
-              ))}
+              )}
             </div>
-
-            <div className="flex h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm text-[var(--text-secondary)]">
-              <SortAsc size={15} />
-              <Select
-                items={sortOptions}
-                selectedValue={sortMode}
-                onItemClicked={(value) => {
-                  if (value) setSortMode(value as SortMode);
-                }}
-                className="w-36"
-                placeholder="Sort"
-              />
-            </div>
-
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
-              >
-                <RotateCcw size={15} />
-                Reset
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="divide-y divide-[var(--border)]">
-          {filteredEpics.length > 0 ? (
-            filteredEpics.map((epic) => (
-              <EpicCard
-                key={epic.id}
-                epic={epic}
-                boardHref={`${projectBaseUrl}/board?epic=${epic.id}`}
-              />
-            ))
-          ) : (
-            <EmptyState
-              hasEpics={epics.length > 0}
-              hasFilters={Boolean(hasActiveFilters)}
-              onCreate={() => setIsCreateOpen(true)}
-              onReset={resetFilters}
-            />
-          )}
-        </div>
+        {filteredEpics.length > 0 ? (
+          <EpicsTable
+            epics={filteredEpics}
+            getBoardHref={(epicId) => `${projectBaseUrl}/board?epic=${epicId}`}
+          />
+        ) : (
+          <EmptyState
+            hasEpics={epics.length > 0}
+            hasFilters={hasActiveFilters}
+            onCreate={() => setIsCreateOpen(true)}
+            onReset={resetFilters}
+          />
+        )}
       </section>
 
       {isCreateOpen && (
@@ -283,7 +321,41 @@ export default function ProjectEpicsPage() {
   );
 }
 
-function EpicCard({
+function EpicsTable({
+  epics,
+  getBoardHref,
+}: {
+  epics: Array<Epic & { status: EpicStatus; descriptionText: string }>;
+  getBoardHref: (epicId: string) => string;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[920px] border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--border)] bg-[var(--background)]/40 text-left">
+            <TableHead>Epic</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Position</TableHead>
+            <TableHead>Schedule</TableHead>
+            <TableHead className="text-right">Action</TableHead>
+          </tr>
+        </thead>
+
+        <tbody>
+          {epics.map((epic) => (
+            <EpicRow
+              key={epic.id}
+              epic={epic}
+              boardHref={getBoardHref(epic.id)}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EpicRow({
   epic,
   boardHref,
 }: {
@@ -291,66 +363,78 @@ function EpicCard({
   boardHref: string;
 }) {
   return (
-    <article className="group p-5 transition hover:bg-[var(--secondary)]/45">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: epic.color ?? "var(--primary)" }}
-            />
+    <tr className="group border-b border-[var(--border)] last:border-b-0 transition hover:bg-[var(--secondary)]/40">
+      <td className="max-w-[420px] px-5 py-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className="mt-2 size-3 shrink-0 rounded-full"
+            style={{ backgroundColor: epic.color ?? "var(--primary)" }}
+          />
 
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                statusConfig[epic.status].className
-              }`}
-            >
-              {statusConfig[epic.status].label}
-            </span>
+          <div className="min-w-0">
+            <h2 className="line-clamp-1 text-sm font-semibold text-[var(--text-primary)]">
+              {epic.title}
+            </h2>
 
-            <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
-              #{epic.position}
-            </span>
-          </div>
-
-          <h2 className="line-clamp-1 font-semibold text-[var(--text-primary)]">
-            {epic.title}
-          </h2>
-
-          <p className="mt-1 line-clamp-2 text-sm text-[var(--text-secondary)]">
-            {epic.descriptionText || "No description yet."}
-          </p>
-
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[var(--text-secondary)]">
-            {epic.startDate && (
-              <span className="flex items-center gap-1.5">
-                <CalendarDays size={14} />
-                Starts {formatDate(epic.startDate)}
-              </span>
-            )}
-
-            {epic.dueDate && (
-              <span className="flex items-center gap-1.5">
-                <Clock size={14} />
-                Due {formatDate(epic.dueDate)}
-              </span>
-            )}
-
-            {!epic.startDate && !epic.dueDate && (
-              <span>No schedule set</span>
-            )}
+            <p className="mt-1 line-clamp-1 text-sm text-[var(--text-secondary)]">
+              {epic.descriptionText || "No description yet."}
+            </p>
           </div>
         </div>
+      </td>
 
-        <Link
-          href={boardHref}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 text-sm font-medium text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--secondary)]"
-        >
-          View tasks
-          <ArrowRight size={15} />
-        </Link>
-      </div>
-    </article>
+      <td className="px-5 py-4">
+        <EpicStatusBadge status={epic.status} />
+      </td>
+
+      <td className="px-5 py-4">
+        <span className="rounded-full border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
+          #{epic.position}
+        </span>
+      </td>
+
+      <td className="px-5 py-4">
+        <div className="space-y-1 text-sm text-[var(--text-secondary)]">
+          {epic.startDate && (
+            <span className="flex items-center gap-1.5">
+              <CalendarDays size={14} />
+              Starts {formatDate(epic.startDate)}
+            </span>
+          )}
+
+          {epic.dueDate && (
+            <span className="flex items-center gap-1.5">
+              <Clock size={14} />
+              Due {formatDate(epic.dueDate)}
+            </span>
+          )}
+
+          {!epic.startDate && !epic.dueDate && <span>No schedule set</span>}
+        </div>
+      </td>
+
+      <td className="px-5 py-4">
+        <div className="flex justify-end">
+          <Link
+            href={boardHref}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm font-medium text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--secondary)]"
+          >
+            View tasks
+            <ArrowRight size={15} />
+          </Link>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function EpicStatusBadge({ status }: { status: EpicStatus }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusConfig[status].className}`}
+    >
+      {statusConfig[status].label}
+    </span>
   );
 }
 
@@ -365,14 +449,14 @@ function SummaryCard({
 }) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--secondary)] text-[var(--text-secondary)]">
-        <Icon size={18} />
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-[var(--text-secondary)]">{label}</p>
+        <Icon size={16} className="text-[var(--text-secondary)]" />
       </div>
 
-      <p className="text-2xl font-semibold text-[var(--text-primary)]">
+      <p className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
         {value}
       </p>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">{label}</p>
     </div>
   );
 }
@@ -446,7 +530,10 @@ function EpicsSkeleton() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="rounded-xl border border-[var(--border)] p-4">
+            <div
+              key={index}
+              className="rounded-xl border border-[var(--border)] p-4"
+            >
               <div className={`mb-4 h-10 w-10 rounded-xl ${skeletonClass}`} />
               <div className={`h-7 w-12 ${skeletonClass}`} />
               <div className={`mt-2 h-4 w-24 ${skeletonClass}`} />
@@ -458,19 +545,61 @@ function EpicsSkeleton() {
       <section className={`${cardClass} overflow-hidden`}>
         <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] p-4">
           <div className={`h-10 w-full max-w-md rounded-xl ${skeletonClass}`} />
-          <div className={`hidden h-10 w-60 rounded-xl md:block ${skeletonClass}`} />
+          <div
+            className={`hidden h-10 w-60 rounded-xl md:block ${skeletonClass}`}
+          />
         </div>
 
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="border-b border-[var(--border)] p-5 last:border-b-0">
-            <div className={`mb-3 h-5 w-56 ${skeletonClass}`} />
-            <div className={`h-4 w-full max-w-lg ${skeletonClass}`} />
-            <div className={`mt-4 h-4 w-64 ${skeletonClass}`} />
-          </div>
-        ))}
+        <div className="overflow-hidden">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={index}
+              className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr] gap-4 border-b border-[var(--border)] p-5 last:border-b-0"
+            >
+              {Array.from({ length: 5 }).map((__, itemIndex) => (
+                <div
+                  key={itemIndex}
+                  className={`h-4 rounded-md ${skeletonClass}`}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );
+}
+
+function TableHead({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={`px-5 py-3 text-xs font-medium text-[var(--text-secondary)] ${className}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function getStatusCount(
+  status: StatusFilter,
+  stats: {
+    total: number;
+    planned: number;
+    inProgress: number;
+    done: number;
+  }
+) {
+  if (status === "All") return stats.total;
+  if (status === "Planned") return stats.planned;
+  if (status === "In_Progress") return stats.inProgress;
+
+  return stats.done;
 }
 
 function getEpicStatus(epic: Epic): EpicStatus {

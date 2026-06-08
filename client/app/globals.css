@@ -414,3 +414,24 @@ body {
   padding: 0.1rem 0.3rem;
   font-size: 0.875em;
 }
+
+.comments-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.comments-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+.comments-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.comment-content [data-type="mention"] {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  padding: 2px 6px;
+  font-weight: 600;
+  color: var(--primary);
+}

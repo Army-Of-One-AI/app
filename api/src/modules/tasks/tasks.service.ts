@@ -407,6 +407,9 @@ export class TasksService {
           ...(dto.epicId !== undefined && {
             epic_id: dto.epicId || null,
           }),
+          ...(dto.sprintId !== undefined && {
+            sprint_id: dto.sprintId || null,
+          }),
         },
         select: {
           id: true,
@@ -510,6 +513,7 @@ export class TasksService {
         position: true,
         status: true,
         started_at: true,
+        sprint: true,
         epic: {
           select: {
             id: true,
@@ -562,6 +566,8 @@ export class TasksService {
       position: t.position,
       status: t.status,
       startedAt: t.started_at,
+
+      sprint: t.sprint,
 
       epic: t.epic
         ? {
@@ -622,6 +628,7 @@ export class TasksService {
         status: true,
         started_at: true,
         epic_id: true,
+        sprint: true,
         parent_task: {
           select: {
             id: true,
@@ -759,6 +766,8 @@ export class TasksService {
       position: t.position,
       status: t.status,
       startedAt: t.started_at,
+
+      sprint: t.sprint,
 
       epic: epic
         ? {

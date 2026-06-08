@@ -46,6 +46,12 @@ import InviteByEmailsDto from './dto/invite-by-emails.dto';
 import AddMemberToProject from './dto/add-member-to-project';
 import { ProjectEpicsService } from '../project-epics/project-epics.service';
 import { CreateEpicDto } from '../project-epics/dto/create-epic.dto';
+import { SprintsService } from '../sprints/sprints.service';
+import { AddTaskToSprintDto } from '../sprints/dto/add-task-to-sprint.dto';
+import { UpdateSprintDto } from '../sprints/dto/update-sprint.dto';
+import { CreateSprintDto } from '../sprints/dto/create-sprint.dto';
+import { TaskCommentsService } from '../task-comments/task-comments.service';
+import { CreateCommentDto } from '../task-comments/dto/create-comment.dto';
 
 @Controller('workspaces')
 export class WorkspacesController {
@@ -55,6 +61,8 @@ export class WorkspacesController {
     private readonly tasksService: TasksService,
     private readonly documentsService: DocumentsService,
     private readonly projectEpicsService: ProjectEpicsService,
+    private readonly sprintsService: SprintsService,
+    private readonly taskCommentsService: TaskCommentsService,
   ) {}
 
   @UseGuards(JWTAuthGuard)
@@ -388,5 +396,181 @@ export class WorkspacesController {
       projectSlug,
       dto,
     );
+  }
+
+  @Get(':workspaceSlug/projects/:projectSlug/sprints')
+  async getProjectSprints(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+  ) {
+    return this.sprintsService.getProjectSprints(workspaceSlug, projectSlug);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/sprints/:sprintId')
+  async getSprintById(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('sprintId') sprintId: string,
+  ) {
+    return this.sprintsService.getSprintById(
+      workspaceSlug,
+      projectSlug,
+      sprintId,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/sprints')
+  async createSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Body() dto: CreateSprintDto,
+  ) {
+    return this.sprintsService.createSprint(workspaceSlug, projectSlug, dto);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Patch(':workspaceSlug/projects/:projectSlug/sprints/:sprintId')
+  async updateSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('sprintId') sprintId: string,
+    @Body() dto: UpdateSprintDto,
+  ) {
+    return this.sprintsService.updateSprint(
+      workspaceSlug,
+      projectSlug,
+      sprintId,
+      dto,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/sprints/:sprintId/start')
+  async startSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('sprintId') sprintId: string,
+  ) {
+    return this.sprintsService.startSprint(
+      workspaceSlug,
+      projectSlug,
+      sprintId,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/sprints/:sprintId/complete')
+  async completeSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('sprintId') sprintId: string,
+  ) {
+    return this.sprintsService.completeSprint(
+      workspaceSlug,
+      projectSlug,
+      sprintId,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/sprints/:sprintId/cancel')
+  async cancelSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('sprintId') sprintId: string,
+  ) {
+    return this.sprintsService.cancelSprint(
+      workspaceSlug,
+      projectSlug,
+      sprintId,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Delete(':workspaceSlug/projects/:projectSlug/sprints/:sprintId')
+  async deleteSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('sprintId') sprintId: string,
+  ) {
+    return this.sprintsService.deleteSprint(
+      workspaceSlug,
+      projectSlug,
+      sprintId,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/sprints/:sprintId/tasks')
+  async addTaskToSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('sprintId') sprintId: string,
+    @Body() dto: AddTaskToSprintDto,
+  ) {
+    return this.sprintsService.addTaskToSprint(
+      workspaceSlug,
+      projectSlug,
+      sprintId,
+      dto.taskId,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Delete(':workspaceSlug/projects/:projectSlug/sprints/tasks/:taskId')
+  async removeTaskFromSprint(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('taskId') taskId: string,
+  ) {
+    return this.sprintsService.removeTaskFromSprint(
+      workspaceSlug,
+      projectSlug,
+      taskId,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/sprints/tasks/:taskId/comments')
+  async createTaskComment(
+    @CurrentUser() user: { id: string },
+    @Param('taskId') taskId: string,
+    @Body() payload: CreateCommentDto,
+  ) {
+    return await this.taskCommentsService.create(user.id, taskId, payload);
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/sprints/tasks/:taskId/comments')
+  async getRootComments(
+    @Param('taskId') taskId: string,
+    @Query('limit') limit?: string,
+    @Query('cursorCreatedAt') cursorCreatedAt?: string,
+    @Query('cursorId') cursorId?: string,
+  ) {
+    return await this.taskCommentsService.getRootComments(taskId, {
+      limit: Number(limit ?? 10),
+      cursorCreatedAt,
+      cursorId,
+    });
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(
+    ':workspaceSlug/projects/:projectSlug/sprints/tasks/:taskId/comments/:commentId/replies',
+  )
+  async getReplies(
+    @Param('commentId') commentId: string,
+    @Query('limit') limit?: string,
+    @Query('cursorCreatedAt') cursorCreatedAt?: string,
+    @Query('cursorId') cursorId?: string,
+  ) {
+    return await this.taskCommentsService.getReplies(commentId, {
+      limit: Number(limit ?? 10),
+      cursorCreatedAt,
+      cursorId,
+    });
   }
 }

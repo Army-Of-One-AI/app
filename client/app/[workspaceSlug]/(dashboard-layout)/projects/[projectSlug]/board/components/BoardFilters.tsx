@@ -1,11 +1,12 @@
 "use client";
 
 import { ProjectMember } from "@/features/projects/types";
+import { Sprint } from "@/features/sprints/types";
 import { Epic } from "@/features/tasks/types";
 import { taskStatusConfig } from "@/shared/styles/classNames";
 import { TaskPriority, TaskStatus } from "@/shared/types/enums";
 import SearchBar from "@/shared/ui/SearchBar";
-import { Check, Layers3, UserRound } from "lucide-react";
+import { Check, Layers3, TimerReset, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export const UNASSIGNED_MEMBER_ID = "__unassigned__";
@@ -13,6 +14,7 @@ export const UNASSIGNED_EPIC_ID = "__no_epic__";
 
 const FILTER_FIELDS = [
   "Assignee",
+  "Sprint",
   "Epic",
   "Status",
   "Priority",
@@ -34,11 +36,17 @@ type Props = {
 
   members?: ProjectMember[];
   epics?: Epic[];
+  sprints?: Sprint[];
 
   selectedEpicIds?: string[];
   onEpicClicked?: (epicId: string) => void;
   onSelectAllEpics?: () => void;
   onClearEpics?: () => void;
+
+  selectedSprintIds?: string[];
+  onSprintClicked?: (sprintId: string) => void;
+  onSelectAllSprints?: () => void;
+  onClearSprints?: () => void;
 
   selectedAssigneeIds?: string[];
   onAssigneeClicked?: (memberId: string) => void;
@@ -53,6 +61,7 @@ type Props = {
 
 const fieldDescriptions: Record<FilterField, string> = {
   Assignee: "Filter tasks by who owns them.",
+  Sprint: "Filter tasks by sprint cycle.",
   Epic: "Filter tasks by product area or initiative.",
   Status: "Filter by current task progress.",
   Priority: "Filter by task urgency.",
@@ -82,28 +91,40 @@ export default function BoardFilters({
   onStatusClicked,
   onSelectAllStatuses,
   onClearStatuses,
+
   selectedPriorities = [],
   onPriorityClicked,
   onSelectAllPriorities,
   onClearPriorities,
+
   selectedAssigneeIds = [],
   onAssigneeClicked,
   onSelectAllAssignees,
   onClearAssignees,
+
+  selectedReporterIds = [],
   onReporterClicked,
   onSelectAllReporters,
   onClearReporters,
-  selectedReporterIds = [],
+
   selectedEpicIds = [],
   onEpicClicked,
   onSelectAllEpics,
   onClearEpics,
+
+  selectedSprintIds = [],
+  onSprintClicked,
+  onSelectAllSprints,
+  onClearSprints,
+
   members = [],
   epics = [],
+  sprints = [],
 }: Props) {
   const [selectedField, setSelectedField] = useState<FilterField>("Assignee");
   const [memberSearch, setMemberSearch] = useState("");
   const [epicSearch, setEpicSearch] = useState("");
+  const [sprintSearch, setSprintSearch] = useState("");
 
   const filteredMembers = useMemo(() => {
     const keyword = memberSearch.trim().toLowerCase();
@@ -125,10 +146,18 @@ export default function BoardFilters({
 
     if (!keyword) return epics;
 
-    return epics.filter((epic) =>
-      epic.title.toLowerCase().includes(keyword)
-    );
+    return epics.filter((epic) => epic.title.toLowerCase().includes(keyword));
   }, [epics, epicSearch]);
+
+  const filteredSprints = useMemo(() => {
+    const keyword = sprintSearch.trim().toLowerCase();
+
+    if (!keyword) return sprints;
+
+    return sprints.filter((sprint) =>
+      sprint.name.toLowerCase().includes(keyword)
+    );
+  }, [sprints, sprintSearch]);
 
   const selectedCount = {
     Status: selectedStatuses.length,
@@ -136,6 +165,7 @@ export default function BoardFilters({
     Assignee: selectedAssigneeIds.length,
     Reporter: selectedReporterIds.length,
     Epic: selectedEpicIds.length,
+    Sprint: selectedSprintIds.length,
   }[selectedField];
 
   const totalCount = {
@@ -144,6 +174,7 @@ export default function BoardFilters({
     Assignee: members.length + 1,
     Reporter: members.length,
     Epic: epics.length + 1,
+    Sprint: sprints.length,
   }[selectedField];
 
   const getFilterMeta = (field: FilterField) => {
@@ -153,6 +184,7 @@ export default function BoardFilters({
       Assignee: selectedAssigneeIds.length,
       Reporter: selectedReporterIds.length,
       Epic: selectedEpicIds.length,
+      Sprint: selectedSprintIds.length,
     }[field];
 
     const total = {
@@ -161,6 +193,7 @@ export default function BoardFilters({
       Assignee: members.length + 1,
       Reporter: members.length,
       Epic: epics.length + 1,
+      Sprint: sprints.length,
     }[field];
 
     const isActive = selected !== total;
@@ -168,8 +201,8 @@ export default function BoardFilters({
       total === 0 || selected === total
         ? "All"
         : selected === 0
-          ? "None"
-          : `${selected} selected`;
+        ? "None"
+        : `${selected} selected`;
 
     return { selected, total, isActive, label };
   };
@@ -178,6 +211,10 @@ export default function BoardFilters({
     Assignee: {
       onSelectAll: onSelectAllAssignees,
       onClear: onClearAssignees,
+    },
+    Sprint: {
+      onSelectAll: onSelectAllSprints,
+      onClear: onClearSprints,
     },
     Epic: {
       onSelectAll: onSelectAllEpics,
@@ -263,6 +300,74 @@ export default function BoardFilters({
             </button>
           );
         })}
+      </div>
+    );
+  };
+
+  const renderSprintFilter = () => {
+    const hasSearch = sprintSearch.trim().length > 0;
+
+    return (
+      <div className="space-y-3">
+        <SearchBar
+          value={sprintSearch}
+          onChange={setSprintSearch}
+          placeholder="Search sprints..."
+        />
+
+        <div className="space-y-1">
+          {filteredSprints.map((sprint) => {
+            const isSelected = selectedSprintIds.includes(sprint.id);
+
+            return (
+              <button
+                key={sprint.id}
+                type="button"
+                onClick={() => onSprintClicked?.(sprint.id)}
+                className="
+                  flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left
+                  transition-all hover:bg-[var(--secondary)]
+                "
+              >
+                <Checkbox checked={isSelected} />
+
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--secondary)] text-[var(--text-secondary)]">
+                  <TimerReset className="h-4 w-4" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`truncate text-sm ${
+                      isSelected
+                        ? "font-medium text-[var(--text-primary)]"
+                        : "text-[var(--text-primary)]"
+                    }`}
+                  >
+                    {sprint.name}
+                  </p>
+
+                  <p className="truncate text-xs text-[var(--text-muted)]">
+                    {sprint.status}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+
+          {sprints.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center">
+              <p className="text-sm text-[var(--text-secondary)]">
+                No sprints in this project.
+              </p>
+            </div>
+          ) : filteredSprints.length === 0 && hasSearch ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center">
+              <p className="text-sm text-[var(--text-secondary)]">
+                No sprints match your search.
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   };
@@ -468,6 +573,8 @@ export default function BoardFilters({
       );
     }
 
+    if (selectedField === "Sprint") return renderSprintFilter();
+
     if (selectedField === "Reporter") {
       return renderMemberFilter(
         selectedReporterIds,
@@ -497,7 +604,8 @@ export default function BoardFilters({
         </h2>
 
         <p className="mt-1 text-xs text-[var(--text-secondary)]">
-          Narrow down tasks by assignee, epic, status, priority, or reporter.
+          Narrow down tasks by assignee, sprint, epic, status, priority, or
+          reporter.
         </p>
       </div>
 
@@ -516,6 +624,7 @@ export default function BoardFilters({
                     setSelectedField(field);
                     setMemberSearch("");
                     setEpicSearch("");
+                    setSprintSearch("");
                   }}
                   className={`
                     group flex w-full items-center justify-between rounded-xl px-3 py-2.5
@@ -524,8 +633,8 @@ export default function BoardFilters({
                       isSelected
                         ? "bg-[var(--primary)]/15 text-[var(--text-primary)]"
                         : meta.isActive
-                          ? "bg-[var(--surface)] text-[var(--text-primary)]"
-                          : "text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
+                        ? "bg-[var(--surface)] text-[var(--text-primary)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)]"
                     }
                   `}
                 >
@@ -538,8 +647,8 @@ export default function BoardFilters({
                         isSelected
                           ? "bg-[var(--primary)] text-[var(--on-primary)]"
                           : meta.isActive
-                            ? "bg-[var(--secondary)] text-[var(--text-primary)]"
-                            : "bg-[var(--surface)] text-[var(--text-muted)]"
+                          ? "bg-[var(--secondary)] text-[var(--text-primary)]"
+                          : "bg-[var(--surface)] text-[var(--text-muted)]"
                       }
                     `}
                   >
@@ -571,6 +680,7 @@ export default function BoardFilters({
               >
                 Select all
               </button>
+
               <button
                 type="button"
                 onClick={selectedFieldActions.onClear}
