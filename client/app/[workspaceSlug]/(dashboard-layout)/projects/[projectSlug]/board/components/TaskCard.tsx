@@ -1,4 +1,4 @@
-import { CalendarDays, GripVertical } from "lucide-react";
+import { CalendarDays, GripVertical, Tag } from "lucide-react";
 import TaskRelationBadges from "./TaskRelationBadges";
 import { taskPriorityColors } from "@/shared/styles/classNames";
 import { Task } from "@/features/tasks/types";
@@ -82,6 +82,8 @@ export function TaskCard({
             <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
               {task.title}
             </h3>
+
+            <TaskLabels labels={task.labels ?? []} />
           </div>
 
           <button
@@ -133,6 +135,47 @@ export function TaskCard({
           </div>
         </div>
       </article>
+    </div>
+  );
+}
+
+function TaskLabels({
+  labels,
+}: {
+  labels: {
+    id: string;
+    name: string;
+    color?: string | null;
+  }[];
+}) {
+  if (labels.length === 0) return null;
+
+  const visibleLabels = labels.slice(0, 3);
+  const hiddenCount = labels.length - visibleLabels.length;
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {visibleLabels.map((label) => (
+        <span
+          key={label.id}
+          title={label.name}
+          className="inline-flex max-w-[120px] items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--secondary)] px-2 py-0.5 text-sm font-medium text-[var(--text-secondary)]"
+        >
+          <Tag
+            size={10}
+            style={{
+              color: label.color ?? "currentColor",
+            }}
+          />
+          <span className="truncate">{label.name}</span>
+        </span>
+      ))}
+
+      {hiddenCount > 0 && (
+        <span className="rounded-full border border-[var(--border)] bg-[var(--secondary)] px-2 py-0.5 text-sm font-medium text-[var(--text-secondary)]">
+          +{hiddenCount}
+        </span>
+      )}
     </div>
   );
 }

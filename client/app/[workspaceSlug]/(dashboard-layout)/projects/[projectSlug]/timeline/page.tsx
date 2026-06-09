@@ -99,6 +99,7 @@ export default function TimelinePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const sprintOrderRef = useRef<Record<string, number>>({});
   const slugs = useSlugs();
 
   const workspaceSlug = slugs.workspace.slug;
@@ -132,6 +133,30 @@ export default function TimelinePage() {
       endDate: localDates[sprint.id]?.endDate ?? sprint.endDate,
     }));
   }, [data, localDates]);
+
+  const sprintOrder = useMemo(() => {
+    const current = sprintOrderRef.current;
+    const next: Record<string, number> = {};
+    const dataIds = new Set(data.map((sprint) => sprint.id));
+    let maxOrder = -1;
+
+    for (const [sprintId, order] of Object.entries(current)) {
+      if (!dataIds.has(sprintId)) continue;
+
+      next[sprintId] = order;
+      maxOrder = Math.max(maxOrder, order);
+    }
+
+    for (const sprint of data) {
+      if (next[sprint.id] !== undefined) continue;
+
+      maxOrder += 1;
+      next[sprint.id] = maxOrder;
+    }
+
+    sprintOrderRef.current = next;
+    return next;
+  }, [data]);
 
   const updateSprintDatesMutation = useMutation({
     mutationFn: async ({
@@ -167,16 +192,14 @@ export default function TimelinePage() {
   });
 
   const filteredSprints = useMemo(() => {
-    const sorted = [...sprints].sort(
-      (a, b) =>
-        DateTime.fromISO(a.startDate).toMillis() -
-        DateTime.fromISO(b.startDate).toMillis()
-    );
+    const sorted = [...sprints].sort((a, b) => {
+      return (sprintOrder[a.id] ?? 0) - (sprintOrder[b.id] ?? 0);
+    });
 
     if (activeFilter === "All") return sorted;
 
     return sorted.filter((sprint) => sprint.status === activeFilter);
-  }, [activeFilter, sprints]);
+  }, [activeFilter, sprintOrder, sprints]);
 
   const timeline = useMemo(() => {
     if (!filteredSprints.length) return null;

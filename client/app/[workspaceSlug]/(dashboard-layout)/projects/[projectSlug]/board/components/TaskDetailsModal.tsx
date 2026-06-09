@@ -33,6 +33,7 @@ import SearchBar from "@/shared/ui/SearchBar";
 import { Sprint } from "@/features/sprints/types";
 import TaskComments from "@/shared/ui/TaskComments";
 import LabelsSelector from "@/shared/ui/LabelsSelector";
+import Select from "@/shared/ui/Select";
 
 type Props = {
   taskId: string;
@@ -147,6 +148,8 @@ export default function TaskDetailsModal({
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
 
+  const [selectedLabels, setSelectedLabels] = useState<TaskLabel[]>([]);
+
   const selectedAssignee = useMemo(() => {
     return members.find((member) => member.id === assigneeId) ?? null;
   }, [members, assigneeId]);
@@ -238,6 +241,8 @@ export default function TaskDetailsModal({
     setSprintId(typedTask.sprint?.id ?? "");
     setIsSprintOpen(false);
     setSprintSearch("");
+
+    setSelectedLabels(typedTask.labels);
   }, [typedTask]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -259,6 +264,7 @@ export default function TaskDetailsModal({
       assigneeId: assigneeId || null,
       epicId: selectedEpic ? selectedEpic.id : null,
       sprintId: selectedSprint ? selectedSprint.id : null,
+      labelIds: selectedLabels.map((label) => label.id),
     });
 
     onUpdate(updatedTask);
@@ -355,14 +361,16 @@ export default function TaskDetailsModal({
         >
           <div className="flex items-center justify-end">
             <button
-              className={`relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-[var(--border)] ${isOpenPopover && `border border-[var(--btn-primary-bg)]`
-                }`}
+              className={`relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-[var(--border)] ${
+                isOpenPopover && `border border-[var(--btn-primary-bg)]`
+              }`}
               type="button"
               onClick={() => setOpenPopover((curr) => !curr)}
             >
               <div
-                className={`${isOpenPopover && `bg-[var(--btn-primary-bg)] opacity-20`
-                  } absolute h-full w-full`}
+                className={`${
+                  isOpenPopover && `bg-[var(--btn-primary-bg)] opacity-20`
+                } absolute h-full w-full`}
               />
 
               <Ellipsis className="relative transition-colors" size={20} />
@@ -602,8 +610,9 @@ export default function TaskDetailsModal({
                 )?.[1].label ?? status}
 
                 <span
-                  className={`transition-transform ${isStatusOpen ? "rotate-180" : ""
-                    }`}
+                  className={`transition-transform ${
+                    isStatusOpen ? "rotate-180" : ""
+                  }`}
                 >
                   <ChevronDown size={20} />
                 </span>
@@ -623,10 +632,11 @@ export default function TaskDetailsModal({
                             setStatus(key as TaskStatus);
                             setIsStatusOpen(false);
                           }}
-                          className={`flex w-full items-center px-6 py-2.5 text-left transition hover:bg-[var(--secondary)] ${isSelected
-                            ? "border-l-2 border-[var(--primary)] bg-[var(--secondary)]"
-                            : ""
-                            }`}
+                          className={`flex w-full items-center px-6 py-2.5 text-left transition hover:bg-[var(--secondary)] ${
+                            isSelected
+                              ? "border-l-2 border-[var(--primary)] bg-[var(--secondary)]"
+                              : ""
+                          }`}
                         >
                           <span
                             style={{
@@ -797,7 +807,6 @@ export default function TaskDetailsModal({
                           <SearchBar
                             autoFocus
                             value={epicSearch}
-                            onChange={setEpicSearch}
                             placeholder="Search epic..."
                           />
                         </div>
@@ -966,26 +975,30 @@ export default function TaskDetailsModal({
                 </DetailRow>
                 <DetailRow label="Labels">
                   <LabelsSelector
-                    onCreate={() => { }}
+                    selectedLabels={selectedLabels}
+                    onSelect={(label) =>
+                      setSelectedLabels((curr) => [...curr, label])
+                    }
+                    onRemove={(label) =>
+                      setSelectedLabels((curr) =>
+                        curr.filter((item) => item.id !== label.id)
+                      )
+                    }
                     labels={labels}
                   />
                 </DetailRow>
 
                 <DetailRow label="Priority">
-                  <select
-                    disabled={disabled}
-                    value={priority}
-                    onChange={(e) =>
-                      setPriority(e.target.value as TaskPriority)
+                  <Select
+                    items={Object.values(TaskPriority).map((priority) => ({
+                      label: priority,
+                      value: priority,
+                    }))}
+                    selectedValue={priority}
+                    onItemClicked={(value) =>
+                      setPriority(value as TaskPriority)
                     }
-                    className={inlineControlClassName}
-                  >
-                    {Object.values(TaskPriority).map((val) => (
-                      <option key={val} value={val}>
-                        {val}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </DetailRow>
 
                 <DetailRow label="Parent">
@@ -1007,11 +1020,9 @@ export default function TaskDetailsModal({
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className={inlineControlClassName}
+                    className={`${inlineControlClassName}`}
                   />
                 </DetailRow>
-
-                <DetailRow label="Labels">None</DetailRow>
 
                 <DetailRow label="Estimate">
                   <input

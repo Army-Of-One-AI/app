@@ -13,7 +13,6 @@ import DeleteWorkspaceModal from "./components/DeleteWorkspaceModal";
 import WorkspaceUrlModal from "./components/WorkspaceURLModal";
 import SettingRow from "./components/SettingRow";
 import useUpdateWorkspaceSettings from "@/features/workspaces/hooks/useUpdateWorkspaceSettings";
-import { useRouter } from "next/navigation";
 
 type WorkspaceForm = {
   name: string;
@@ -27,7 +26,6 @@ const APP_HOST = APP_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
 export default function SettingsWorkspacePage() {
   const slugs = useSlugs();
-  const router = useRouter();
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data, isLoading, error, refetch } = useWorkspaceDetailsBySlug(
@@ -161,7 +159,7 @@ export default function SettingsWorkspacePage() {
 
   return (
     <>
-      <main className="w-full max-w-5xl px-10 py-10">
+      <main className="w-full max-w-5xl px-6 py-8 lg:px-10 lg:py-10">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-(--text-primary)">
             Workspace
@@ -173,7 +171,7 @@ export default function SettingsWorkspacePage() {
           </p>
         </div>
 
-        <section className="mt-8 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <section className="mt-8 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
           <SettingRow label="Logo" description="Recommended size is 256x256px">
             <div className="relative ml-auto">
               {logoPreviewURL ? (
@@ -233,7 +231,7 @@ export default function SettingsWorkspacePage() {
 
         <SectionTitle>Danger zone</SectionTitle>
 
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <section className="rounded-2xl border border-red-500/25 bg-red-500/5">
           <div className="flex items-center justify-between px-4 py-5">
             <div>
               <div className="text-sm font-semibold">Delete workspace</div>
@@ -264,8 +262,10 @@ export default function SettingsWorkspacePage() {
                 bounce: 0.5,
               }}
               className="
-                flex items-center justify-between
-                px-4 py-4 mt-2"
+                mt-6 flex flex-col gap-3 rounded-2xl border border-[var(--border)]
+                bg-[var(--surface)] px-4 py-4 shadow-sm sm:flex-row
+                sm:items-center sm:justify-between
+              "
             >
               <span className={`text-sm ${classNames.text.secondary}`}>
                 You have unsaved changes

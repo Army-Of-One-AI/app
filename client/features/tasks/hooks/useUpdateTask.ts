@@ -14,6 +14,7 @@ type UpdateTaskPayload = {
   assigneeId?: string | null;
   epicId?: string | null;
   sprintId?: string | null;
+  labelIds: string[];
 };
 
 export default function useUpdateTask() {

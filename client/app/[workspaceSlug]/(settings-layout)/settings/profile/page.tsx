@@ -185,7 +185,7 @@ export default function SettingsProfilePage() {
 
   return (
     <>
-      <main className="w-full max-w-5xl px-10 py-10">
+      <main className="w-full max-w-5xl px-6 py-8 lg:px-10 lg:py-10">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-(--text-primary)">
             Profile
@@ -197,7 +197,7 @@ export default function SettingsProfilePage() {
           </p>
         </div>
 
-        <section className="mt-8 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <section className="mt-8 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
           <SettingRow
             label="Avatar"
             description="Recommended size is 256x256px"
@@ -277,7 +277,7 @@ export default function SettingsProfilePage() {
 
         <SectionTitle>Preferences</SectionTitle>
 
-        <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
           <SettingRow
             label="Theme"
             description="Choose how the interface appears on this device"
@@ -295,7 +295,7 @@ export default function SettingsProfilePage() {
 
         <SectionTitle>Danger zone</SectionTitle>
 
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <section className="rounded-2xl border border-red-500/25 bg-red-500/5">
           <div className="flex items-center justify-between px-4 py-5">
             <div>
               <div className="text-sm font-semibold">Delete account</div>
@@ -326,9 +326,10 @@ export default function SettingsProfilePage() {
                 bounce: 0.5,
               }}
               className="
-                flex items-center justify-between
-                px-4 py-4 mt-
-                "
+                mt-6 flex flex-col gap-3 rounded-2xl border border-[var(--border)]
+                bg-[var(--surface)] px-4 py-4 shadow-sm sm:flex-row
+                sm:items-center sm:justify-between
+              "
             >
               <span className={`text-sm ${classNames.text.secondary}`}>
                 You have unsaved changes
@@ -483,9 +484,11 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[1fr_256px] items-center gap-5 border-b border-[var(--border)] px-4 py-4 last:border-b-0">
+    <div className="grid gap-3 border-b border-[var(--border)] px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(220px,320px)] md:items-center md:gap-5">
       <div className="min-w-0">
-        <div className="text-sm font-semibold">{label}</div>
+        <div className="text-sm font-semibold text-[var(--text-primary)]">
+          {label}
+        </div>
         {description && (
           <div className={`mt-1 text-sm ${classNames.text.secondary}`}>
             {description}
@@ -493,7 +496,9 @@ function SettingRow({
         )}
       </div>
 
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 md:justify-self-end md:[&>*]:max-w-full">
+        {children}
+      </div>
     </div>
   );
 }

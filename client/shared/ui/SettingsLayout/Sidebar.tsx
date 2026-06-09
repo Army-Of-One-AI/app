@@ -95,7 +95,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`absolute inset-y-0 left-0 flex w-64 flex-col px-3 py-4 ${classNames.text.primary}`}
+      className={`flex h-[calc(100vh-24px)] w-64 shrink-0 flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)]/50 px-3 py-4 shadow-[var(--shadow-soft)] ${classNames.text.primary}`}
     >
       <Link
         href={buildPath("/projects")}
@@ -105,7 +105,7 @@ export default function Sidebar() {
         Back to workspace
       </Link>
 
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-soft)]">
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
         <div className="flex items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-semibold text-[var(--on-primary)]">
             {isLoading ? "..." : workspaceInitial}
@@ -146,7 +146,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 text-left text-sm text-[var(--text-secondary)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
+          className="flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--secondary)] hover:text-[var(--text-primary)]"
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--secondary)]">
             {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
@@ -161,7 +161,7 @@ export default function Sidebar() {
           </span>
         </button>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-soft)]">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
           <div className="flex items-center gap-3">
             <UserAvatar
               avatarURL={userInfo?.avatarImageURL}

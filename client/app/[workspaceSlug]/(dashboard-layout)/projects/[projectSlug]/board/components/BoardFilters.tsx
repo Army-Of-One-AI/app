@@ -6,16 +6,24 @@ import { Epic } from "@/features/tasks/types";
 import { taskStatusConfig } from "@/shared/styles/classNames";
 import { TaskPriority, TaskStatus } from "@/shared/types/enums";
 import SearchBar from "@/shared/ui/SearchBar";
-import { Check, Layers3, TimerReset, UserRound } from "lucide-react";
+import { Check, Layers3, Tag, TimerReset, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export const UNASSIGNED_MEMBER_ID = "__unassigned__";
 export const UNASSIGNED_EPIC_ID = "__no_epic__";
+export const UNLABELLED_LABEL_ID = "__unlabelled__";
+
+type TaskLabel = {
+  id: string;
+  name: string;
+  color?: string | null;
+};
 
 const FILTER_FIELDS = [
   "Assignee",
   "Sprint",
   "Epic",
+  "Label",
   "Status",
   "Priority",
   "Reporter",
@@ -37,6 +45,12 @@ type Props = {
   members?: ProjectMember[];
   epics?: Epic[];
   sprints?: Sprint[];
+  labels?: TaskLabel[];
+
+  selectedLabelIds?: string[];
+  onLabelClicked?: (labelId: string) => void;
+  onSelectAllLabels?: () => void;
+  onClearLabels?: () => void;
 
   selectedEpicIds?: string[];
   onEpicClicked?: (epicId: string) => void;
@@ -63,6 +77,7 @@ const fieldDescriptions: Record<FilterField, string> = {
   Assignee: "Filter tasks by who owns them.",
   Sprint: "Filter tasks by sprint cycle.",
   Epic: "Filter tasks by product area or initiative.",
+  Label: "Filter tasks by assigned labels.",
   Status: "Filter by current task progress.",
   Priority: "Filter by task urgency.",
   Reporter: "Filter by task creator.",
@@ -117,14 +132,29 @@ export default function BoardFilters({
   onSelectAllSprints,
   onClearSprints,
 
+  selectedLabelIds = [],
+  onLabelClicked,
+  onSelectAllLabels,
+  onClearLabels,
+
   members = [],
   epics = [],
   sprints = [],
+  labels = [],
 }: Props) {
   const [selectedField, setSelectedField] = useState<FilterField>("Assignee");
   const [memberSearch, setMemberSearch] = useState("");
   const [epicSearch, setEpicSearch] = useState("");
   const [sprintSearch, setSprintSearch] = useState("");
+  const [labelSearch, setLabelSearch] = useState("");
+
+  const filteredLabels = useMemo(() => {
+    const keyword = labelSearch.trim().toLowerCase();
+
+    if (!keyword) return labels;
+
+    return labels.filter((label) => label.name.toLowerCase().includes(keyword));
+  }, [labels, labelSearch]);
 
   const filteredMembers = useMemo(() => {
     const keyword = memberSearch.trim().toLowerCase();
@@ -166,6 +196,7 @@ export default function BoardFilters({
     Reporter: selectedReporterIds.length,
     Epic: selectedEpicIds.length,
     Sprint: selectedSprintIds.length,
+    Label: selectedLabelIds.length,
   }[selectedField];
 
   const totalCount = {
@@ -175,6 +206,7 @@ export default function BoardFilters({
     Reporter: members.length,
     Epic: epics.length + 1,
     Sprint: sprints.length,
+    Label: labels.length + 1,
   }[selectedField];
 
   const getFilterMeta = (field: FilterField) => {
@@ -185,6 +217,7 @@ export default function BoardFilters({
       Reporter: selectedReporterIds.length,
       Epic: selectedEpicIds.length,
       Sprint: selectedSprintIds.length,
+      Label: selectedLabelIds.length,
     }[field];
 
     const total = {
@@ -194,6 +227,7 @@ export default function BoardFilters({
       Reporter: members.length,
       Epic: epics.length + 1,
       Sprint: sprints.length,
+      Label: labels.length + 1,
     }[field];
 
     const isActive = selected !== total;
@@ -219,6 +253,10 @@ export default function BoardFilters({
     Epic: {
       onSelectAll: onSelectAllEpics,
       onClear: onClearEpics,
+    },
+    Label: {
+      onSelectAll: onSelectAllLabels,
+      onClear: onClearLabels,
     },
     Status: {
       onSelectAll: onSelectAllStatuses,
@@ -300,6 +338,92 @@ export default function BoardFilters({
             </button>
           );
         })}
+      </div>
+    );
+  };
+
+  const renderLabelFilter = () => {
+    const hasSearch = labelSearch.trim().length > 0;
+
+    return (
+      <div className="space-y-3">
+        <SearchBar
+          value={labelSearch}
+          onChange={setLabelSearch}
+          placeholder="Search labels..."
+        />
+
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => onLabelClicked?.(UNLABELLED_LABEL_ID)}
+            className="
+              flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left
+              transition-all hover:bg-[var(--secondary)]
+            "
+          >
+            <Checkbox checked={selectedLabelIds.includes(UNLABELLED_LABEL_ID)} />
+
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--secondary)] text-[var(--text-secondary)]">
+              <Tag className="h-4 w-4" />
+            </div>
+
+            <span className="text-sm text-[var(--text-primary)]">
+              Unlabelled
+            </span>
+          </button>
+
+          {filteredLabels.map((label) => {
+            const isSelected = selectedLabelIds.includes(label.id);
+
+            return (
+              <button
+                key={label.id}
+                type="button"
+                onClick={() => onLabelClicked?.(label.id)}
+                className="
+                  flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left
+                  transition-all hover:bg-[var(--secondary)]
+                "
+              >
+                <Checkbox checked={isSelected} />
+
+                <div
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--secondary)]"
+                  style={{
+                    color: label.color ?? "var(--text-secondary)",
+                  }}
+                >
+                  <Tag className="h-4 w-4" />
+                </div>
+
+                <span
+                  className={`min-w-0 flex-1 truncate text-sm ${
+                    isSelected
+                      ? "font-medium text-[var(--text-primary)]"
+                      : "text-[var(--text-primary)]"
+                  }`}
+                >
+                  {label.name}
+                </span>
+              </button>
+            );
+          })}
+
+          {filteredLabels.length === 0 && hasSearch ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center">
+              <p className="text-sm text-[var(--text-secondary)]">
+                No labels match your search.
+              </p>
+            </div>
+          ) : labels.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center">
+              <p className="text-sm text-[var(--text-secondary)]">
+                No labels in this project yet.
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   };
@@ -587,6 +711,8 @@ export default function BoardFilters({
 
     if (selectedField === "Epic") return renderEpicFilter();
 
+    if (selectedField === "Label") return renderLabelFilter();
+
     return renderStatusFilter();
   };
 
@@ -604,8 +730,8 @@ export default function BoardFilters({
         </h2>
 
         <p className="mt-1 text-xs text-[var(--text-secondary)]">
-          Narrow down tasks by assignee, sprint, epic, status, priority, or
-          reporter.
+          Narrow down tasks by assignee, sprint, epic, label, status, priority,
+          or reporter.
         </p>
       </div>
 
@@ -625,6 +751,7 @@ export default function BoardFilters({
                     setMemberSearch("");
                     setEpicSearch("");
                     setSprintSearch("");
+                    setLabelSearch("");
                   }}
                   className={`
                     group flex w-full items-center justify-between rounded-xl px-3 py-2.5

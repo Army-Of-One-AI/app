@@ -36,6 +36,8 @@ export type Task = {
 
   sprint?: Sprint | null;
 
+  labels: TaskLabel[];
+
   subtasks: Task[];
 
   epic?: {
@@ -68,6 +70,7 @@ export type TaskActivityItem = {
 export type TaskDetails = Task & {
   epic: Epic | null;
   sprint?: Sprint | null;
+  labels: TaskLabel[];
 };
 
 export type GetTaskActivitiesParams = {

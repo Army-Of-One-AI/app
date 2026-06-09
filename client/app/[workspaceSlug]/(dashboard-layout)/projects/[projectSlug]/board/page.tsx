@@ -37,6 +37,7 @@ import Popover from "@/shared/ui/Popover";
 import BoardFilters, {
   UNASSIGNED_EPIC_ID,
   UNASSIGNED_MEMBER_ID,
+  UNLABELLED_LABEL_ID,
 } from "./components/BoardFilters";
 import useSlugs from "@/shared/hooks/useSlugs";
 import SearchBar from "@/shared/ui/SearchBar";
@@ -148,7 +149,7 @@ export default function ProjectBoardPage() {
     error,
   } = useTasksByProjectSlug(projectSlug, workspaceSlug);
 
-  const { data: labels } = useTaskLabels(workspaceSlug, projectSlug)
+  const { data: labels } = useTaskLabels(workspaceSlug, projectSlug);
 
   const createTaskMutation = useCreateTask(workspaceSlug, projectSlug);
   const { mutateAsync: updateTask } = useUpdateTask();
@@ -188,8 +189,10 @@ export default function ProjectBoardPage() {
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
   const [selectedReporterIds, setSelectedReporterIds] = useState<string[]>([]);
   const [selectedEpicIds, setSelectedEpicIds] = useState<string[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [hasInitializedMembers, setHasInitializedMembers] = useState(false);
   const [hasInitializedEpics, setHasInitializedEpics] = useState(false);
+  const [hasInitializedLabels, setHasInitializedLabels] = useState(false);
   const [selectedSprintIds, setSelectedSprintIds] = useState<string[]>(() => {
     const sprintParam = parseQueryList(searchParams.get("sprint"));
     return sprintParam ?? [];
@@ -249,6 +252,16 @@ export default function ProjectBoardPage() {
 
   const allEpicIds = useMemo(() => [...epicIds, UNASSIGNED_EPIC_ID], [epicIds]);
 
+  const labelIds = useMemo(
+    () => (labels ?? []).map((label) => label.id),
+    [labels]
+  );
+
+  const allLabelIds = useMemo(
+    () => [...labelIds, UNLABELLED_LABEL_ID],
+    [labelIds]
+  );
+
   useEffect(() => {
     setMounted(true);
     setCurrentTime(Date.now());
@@ -291,8 +304,10 @@ export default function ProjectBoardPage() {
     const assigneeSet = new Set(selectedAssigneeIds);
     const reporterSet = new Set(selectedReporterIds);
     const epicSet = new Set(selectedEpicIds);
+    const labelSet = new Set(selectedLabelIds);
     const memberFiltersReady = (members?.length ?? 0) > 0;
     const epicFiltersReady = epics !== undefined;
+    const labelFiltersReady = labels !== undefined;
 
     return boardTasks.filter((task) => {
       const matchesSearch =
@@ -306,7 +321,7 @@ export default function ProjectBoardPage() {
         !memberFiltersReady && selectedAssigneeIds.length === 0
           ? true
           : assigneeSet.has(task.assignee?.id ?? "") ||
-          (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
+            (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
 
       const matchesReporter =
         !memberFiltersReady && selectedReporterIds.length === 0
@@ -317,7 +332,13 @@ export default function ProjectBoardPage() {
         !epicFiltersReady && selectedEpicIds.length === 0
           ? true
           : epicSet.has(task.epic?.id ?? "") ||
-          (!task.epic && epicSet.has(UNASSIGNED_EPIC_ID));
+            (!task.epic && epicSet.has(UNASSIGNED_EPIC_ID));
+
+      const matchesLabels =
+        !labelFiltersReady && selectedLabelIds.length === 0
+          ? true
+          : task.labels.some((label) => labelSet.has(label.id)) ||
+            (task.labels.length === 0 && labelSet.has(UNLABELLED_LABEL_ID));
 
       const matchesSprint =
         selectedSprintIds.length === 0 ||
@@ -329,7 +350,8 @@ export default function ProjectBoardPage() {
         prioritySet.has(task.priority) &&
         matchesAssignee &&
         matchesReporter &&
-        matchesEpic
+        matchesEpic &&
+        matchesLabels
       );
     });
   }, [
@@ -339,9 +361,11 @@ export default function ProjectBoardPage() {
     selectedAssigneeIds,
     selectedReporterIds,
     selectedEpicIds,
+    selectedLabelIds,
     members,
     epics,
-    selectedSprintId,
+    labels,
+    selectedSprintIds,
   ]);
 
   const tasksByStatus = useMemo(() => {
@@ -470,20 +494,27 @@ export default function ProjectBoardPage() {
       count += 1;
     }
 
+    if (hasInitializedLabels && !isSameSet(selectedLabelIds, allLabelIds)) {
+      count += 1;
+    }
+
     return count;
   }, [
     search,
     selectedSprintId,
     hasInitializedMembers,
     hasInitializedEpics,
+    hasInitializedLabels,
     allAssigneeIds,
     memberIds,
     allEpicIds,
+    allLabelIds,
     selectedStatuses,
     selectedPriorities,
     selectedAssigneeIds,
     selectedReporterIds,
     selectedEpicIds,
+    selectedLabelIds,
   ]);
 
   const resetBoardFilters = () => {
@@ -494,6 +525,7 @@ export default function ProjectBoardPage() {
     setSelectedAssigneeIds([...allAssigneeIds]);
     setSelectedReporterIds([...memberIds]);
     setSelectedEpicIds([...allEpicIds]);
+    setSelectedLabelIds([...allLabelIds]);
   };
 
   const appliedFilterChips = useMemo<FilterChip[]>(() => {
@@ -506,6 +538,9 @@ export default function ProjectBoardPage() {
     );
     const epicById = new Map(
       (epics ?? []).map((epic) => [epic.id, epic.title])
+    );
+    const labelById = new Map(
+      (labels ?? []).map((label) => [label.id, label.name])
     );
     const summarize = (
       selected: readonly string[],
@@ -611,11 +646,30 @@ export default function ProjectBoardPage() {
       }
     }
 
+    if (hasInitializedLabels) {
+      const labelSummary = summarize(
+        selectedLabelIds,
+        allLabelIds,
+        (labelId) =>
+          labelId === UNLABELLED_LABEL_ID
+            ? "Unlabelled"
+            : labelById.get(labelId) ?? "Unknown label"
+      );
+      if (labelSummary) {
+        chips.push({
+          key: "label",
+          label: `Label: ${labelSummary}`,
+          onRemove: () => setSelectedLabelIds([...allLabelIds]),
+        });
+      }
+    }
+
     return chips;
   }, [
     search,
     members,
     epics,
+    labels,
     sprints,
     selectedSprintId,
     selectedStatuses,
@@ -623,18 +677,22 @@ export default function ProjectBoardPage() {
     selectedAssigneeIds,
     selectedReporterIds,
     selectedEpicIds,
+    selectedLabelIds,
     hasInitializedMembers,
     hasInitializedEpics,
+    hasInitializedLabels,
     allAssigneeIds,
     memberIds,
     allEpicIds,
+    allLabelIds,
   ]);
 
   const buildBoardUrl = (params: URLSearchParams) => {
     const nextQuery = params.toString();
 
-    return `/${workspaceSlug}/projects/${projectSlug}/board${nextQuery ? `?${nextQuery}` : ""
-      }`;
+    return `/${workspaceSlug}/projects/${projectSlug}/board${
+      nextQuery ? `?${nextQuery}` : ""
+    }`;
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -650,6 +708,9 @@ export default function ProjectBoardPage() {
 
     const taskId = String(active.id);
     const nextStatus = String(over.id) as BoardStatus;
+    const task = boardTasks.find((ele) => ele.id === taskId);
+
+    if (!task) return;
 
     if (!columns.some((column) => column.key === nextStatus)) return;
 
@@ -657,9 +718,9 @@ export default function ProjectBoardPage() {
       current.map((task) =>
         task.id === taskId
           ? {
-            ...task,
-            status: nextStatus,
-          }
+              ...task,
+              status: nextStatus,
+            }
           : task
       )
     );
@@ -671,6 +732,7 @@ export default function ProjectBoardPage() {
         workspaceSlug,
         taskId,
         projectSlug,
+        labelIds: task.labels.map((ele) => ele.id),
       });
       await queryClient.refetchQueries({
         queryKey: ["get-task-by-id", taskId, projectSlug, workspaceSlug],
@@ -768,6 +830,27 @@ export default function ProjectBoardPage() {
   }, [epics, searchParams, allEpicIds, hasInitializedEpics]);
 
   useEffect(() => {
+    if (!labels) return;
+
+    const labelParams = parseQueryList(searchParams.get("label"));
+    const validLabelIds = new Set(allLabelIds);
+
+    if (!hasInitializedLabels) {
+      setSelectedLabelIds(
+        labelParams === null
+          ? [...allLabelIds]
+          : labelParams.filter((id) => validLabelIds.has(id))
+      );
+      setHasInitializedLabels(true);
+      return;
+    }
+
+    setSelectedLabelIds((current) =>
+      current.filter((id) => validLabelIds.has(id))
+    );
+  }, [labels, searchParams, allLabelIds, hasInitializedLabels]);
+
+  useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
 
     const setOrDelete = (key: string, value: string | null) => {
@@ -815,6 +898,13 @@ export default function ProjectBoardPage() {
       );
     }
 
+    if (hasInitializedLabels) {
+      setOrDelete(
+        "label",
+        serializeFilterSelection(selectedLabelIds, allLabelIds)
+      );
+    }
+
     if (params.toString() !== searchParams.toString()) {
       router.replace(buildBoardUrl(params), { scroll: false });
     }
@@ -828,11 +918,14 @@ export default function ProjectBoardPage() {
     selectedAssigneeIds,
     selectedReporterIds,
     selectedEpicIds,
+    selectedLabelIds,
     hasInitializedMembers,
     hasInitializedEpics,
+    hasInitializedLabels,
     allAssigneeIds,
     memberIds,
     allEpicIds,
+    allLabelIds,
   ]);
 
   useEffect(() => {
@@ -982,6 +1075,19 @@ export default function ProjectBoardPage() {
                 isOpen={isFilterOpen}
                 content={
                   <BoardFilters
+                    labels={labels}
+                    selectedLabelIds={selectedLabelIds}
+                    onSelectAllLabels={() =>
+                      setSelectedLabelIds([...allLabelIds])
+                    }
+                    onClearLabels={() => setSelectedLabelIds([])}
+                    onLabelClicked={(labelId) => {
+                      setSelectedLabelIds((curr) =>
+                        curr.includes(labelId)
+                          ? curr.filter((item) => item !== labelId)
+                          : [...curr, labelId]
+                      );
+                    }}
                     members={members || []}
                     epics={epics || []}
                     selectedPriorities={selectedPriorities}

@@ -201,13 +201,7 @@ export class TasksService {
       where: {
         id: taskId,
         deleted_at: null,
-        project: {
-          slug: projectSlug,
-          deleted_at: null,
-          workspace: {
-            slug: workspaceSlug,
-          },
-        },
+        project_id: project.id,
       },
       select: {
         id: true,
@@ -224,6 +218,38 @@ export class TasksService {
 
     if (!task) {
       throw new NotFoundException('Task not found');
+    }
+
+    let nextLabels:
+      | {
+          set: {
+            id: string;
+          }[];
+        }
+      | undefined;
+
+    if (dto.labelIds !== undefined) {
+      const labels = await this.prisma.taskLabel.findMany({
+        where: {
+          id: {
+            in: dto.labelIds,
+          },
+          project_id: project.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (labels.length !== dto.labelIds.length) {
+        throw new NotFoundException('One or more labels not found');
+      }
+
+      nextLabels = {
+        set: labels.map((label) => ({
+          id: label.id,
+        })),
+      };
     }
 
     const activities: Prisma.TaskActivityLogCreateManyInput[] = [];
@@ -383,7 +409,9 @@ export class TasksService {
 
     const operations: Prisma.PrismaPromise<unknown>[] = [
       this.prisma.task.update({
-        where: { id: task.id },
+        where: {
+          id: task.id,
+        },
         data: {
           ...(dto.title !== undefined && { title: dto.title }),
           ...(dto.description !== undefined && {
@@ -409,6 +437,9 @@ export class TasksService {
           }),
           ...(dto.sprintId !== undefined && {
             sprint_id: dto.sprintId || null,
+          }),
+          ...(nextLabels !== undefined && {
+            labels: nextLabels,
           }),
         },
         select: {
@@ -514,6 +545,7 @@ export class TasksService {
         status: true,
         started_at: true,
         sprint: true,
+        labels: true,
         epic: {
           select: {
             id: true,
@@ -566,6 +598,8 @@ export class TasksService {
       position: t.position,
       status: t.status,
       startedAt: t.started_at,
+
+      labels: t.labels,
 
       sprint: t.sprint,
 
@@ -629,6 +663,7 @@ export class TasksService {
         started_at: true,
         epic_id: true,
         sprint: true,
+        labels: true,
         parent_task: {
           select: {
             id: true,
@@ -768,6 +803,8 @@ export class TasksService {
       startedAt: t.started_at,
 
       sprint: t.sprint,
+
+      labels: t.labels,
 
       epic: epic
         ? {

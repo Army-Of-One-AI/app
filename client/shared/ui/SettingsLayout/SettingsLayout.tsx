@@ -9,7 +9,7 @@ export default function SettingsLayout({ children }: Props) {
   return (
     <div
       className={`
-        absolute inset-0 overflow-hidden
+        flex min-h-screen gap-3 overflow-hidden p-3
         ${classNames.background}
       `}
     >
@@ -17,15 +17,7 @@ export default function SettingsLayout({ children }: Props) {
 
       <main
         className={`
-          absolute
-          top-3
-          right-3
-          left-64
-          bottom-3
-          h-[calc(100vh-24px)]
-          overflow-y-auto
-          rounded-2xl
-          border
+          min-w-0 flex-1 overflow-y-auto rounded-2xl border
           ${classNames.background}
           ${classNames.border}
           shadow-[var(--shadow-soft)]

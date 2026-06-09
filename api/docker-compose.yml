@@ -45,3 +45,4 @@ volumes:
   redis_data:
   clickhouse_data:
   clickhouse_logs:
+  pgdata:

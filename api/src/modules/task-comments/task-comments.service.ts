@@ -165,6 +165,11 @@ export class TaskCommentsService {
             },
           },
         },
+        _count: {
+          select: {
+            replied_comments: true,
+          },
+        },
       },
     });
 
