@@ -289,6 +289,226 @@ export class ProjectsService {
 
     const next7DaysTo = now.plus({ days: 6 }).endOf('day').toJSDate();
 
+    const [tasksStats, recentActivities] = await Promise.all([
+      this.prisma.$transaction([
+        this.prisma.task.count({
+          where: {
+            project_id: projectId,
+            archived_at: null,
+            deleted_at: null,
+            parent_task_id: null,
+            created_at: {
+              gte: last7DaysFrom,
+              lte: todayEnd,
+            },
+          },
+        }),
+
+        this.prisma.task.count({
+          where: {
+            project_id: projectId,
+            archived_at: null,
+            deleted_at: null,
+            parent_task_id: null,
+            updated_at: {
+              gte: last7DaysFrom,
+              lte: todayEnd,
+            },
+          },
+        }),
+
+        this.prisma.task.count({
+          where: {
+            project_id: projectId,
+            archived_at: null,
+            deleted_at: null,
+            parent_task_id: null,
+            completed_at: {
+              gte: last7DaysFrom,
+              lte: todayEnd,
+            },
+          },
+        }),
+
+        this.prisma.task.count({
+          where: {
+            project_id: projectId,
+            archived_at: null,
+            deleted_at: null,
+            parent_task_id: null,
+            due_date: {
+              gte: now.startOf('day').toJSDate(),
+              lte: next7DaysTo,
+            },
+          },
+        }),
+
+        this.prisma.task.groupBy({
+          by: ['status'],
+          where: {
+            project_id: projectId,
+            archived_at: null,
+            deleted_at: null,
+            parent_task_id: null,
+          },
+          _count: true,
+          orderBy: {
+            status: 'desc',
+          },
+        }),
+
+        this.prisma.task.groupBy({
+          by: ['priority'],
+          where: {
+            project_id: projectId,
+            archived_at: null,
+            deleted_at: null,
+            parent_task_id: null,
+          },
+          _count: true,
+          orderBy: {
+            priority: 'desc',
+          },
+        }),
+
+        this.prisma.task.groupBy({
+          by: ['assignee_id'],
+          where: {
+            project_id: projectId,
+            archived_at: null,
+            deleted_at: null,
+            parent_task_id: null,
+          },
+          _count: true,
+          orderBy: {
+            _count: {
+              assignee_id: 'desc',
+            },
+          },
+        }),
+      ]),
+      this.clickhouseService.getProjectLatestActivities(project.id),
+    ]);
+
+    // const [
+    //   tasksCreatedLast7DaysCount,
+    //   tasksUpdatedLast7DaysCount,
+    //   tasksCompletedLast7DaysCount,
+    //   tasksDueNext7DaysCount,
+    //   tasksByStatus,
+    //   tasksByPriority,
+    //   tasksByAsignee,
+    // ] = await this.prisma.$transaction([
+    //   this.prisma.task.count({
+    //     where: {
+    //       project_id: projectId,
+    //       archived_at: null,
+    //       deleted_at: null,
+    //       parent_task_id: null,
+    //       created_at: {
+    //         gte: last7DaysFrom,
+    //         lte: todayEnd,
+    //       },
+    //     },
+    //   }),
+
+    //   this.prisma.task.count({
+    //     where: {
+    //       project_id: projectId,
+    //       archived_at: null,
+    //       deleted_at: null,
+    //       parent_task_id: null,
+    //       updated_at: {
+    //         gte: last7DaysFrom,
+    //         lte: todayEnd,
+    //       },
+    //     },
+    //   }),
+
+    //   this.prisma.task.count({
+    //     where: {
+    //       project_id: projectId,
+    //       archived_at: null,
+    //       deleted_at: null,
+    //       parent_task_id: null,
+    //       completed_at: {
+    //         gte: last7DaysFrom,
+    //         lte: todayEnd,
+    //       },
+    //     },
+    //   }),
+
+    //   this.prisma.task.count({
+    //     where: {
+    //       project_id: projectId,
+    //       archived_at: null,
+    //       deleted_at: null,
+    //       parent_task_id: null,
+    //       due_date: {
+    //         gte: now.startOf('day').toJSDate(),
+    //         lte: next7DaysTo,
+    //       },
+    //     },
+    //   }),
+
+    //   this.prisma.task.groupBy({
+    //     by: ['status'],
+    //     where: {
+    //       project_id: projectId,
+    //       archived_at: null,
+    //       deleted_at: null,
+    //       parent_task_id: null,
+    //     },
+    //     _count: true,
+    //     orderBy: {
+    //       status: 'desc',
+    //     },
+    //   }),
+
+    //   this.prisma.task.groupBy({
+    //     by: ['priority'],
+    //     where: {
+    //       project_id: projectId,
+    //       archived_at: null,
+    //       deleted_at: null,
+    //       parent_task_id: null,
+    //     },
+    //     _count: true,
+    //     orderBy: {
+    //       priority: 'desc',
+    //     },
+    //   }),
+
+    //   this.prisma.task.groupBy({
+    //     by: ['assignee_id'],
+    //     where: {
+    //       project_id: projectId,
+    //       archived_at: null,
+    //       deleted_at: null,
+    //       parent_task_id: null,
+    //     },
+    //     _count: true,
+    //     orderBy: {
+    //       _count: {
+    //         creator_id: 'desc',
+    //       },
+    //     },
+    //   }),
+
+    //   // this.prisma.taskActivityLog.findMany({
+    //   //   where: {
+    //   //     project_id: project.id,
+    //   //   },
+    //   //   orderBy: {
+    //   //     created_at: 'desc',
+    //   //   },
+    //   //   take: 10,
+    //   // }),
+    // ]);
+
+    // const recentActivities =
+    //   await this.clickhouseService.getProjectLatestActivities(project.id);
+
     const [
       tasksCreatedLast7DaysCount,
       tasksUpdatedLast7DaysCount,
@@ -297,116 +517,7 @@ export class ProjectsService {
       tasksByStatus,
       tasksByPriority,
       tasksByAsignee,
-    ] = await this.prisma.$transaction([
-      this.prisma.task.count({
-        where: {
-          project_id: projectId,
-          archived_at: null,
-          deleted_at: null,
-          parent_task_id: null,
-          created_at: {
-            gte: last7DaysFrom,
-            lte: todayEnd,
-          },
-        },
-      }),
-
-      this.prisma.task.count({
-        where: {
-          project_id: projectId,
-          archived_at: null,
-          deleted_at: null,
-          parent_task_id: null,
-          updated_at: {
-            gte: last7DaysFrom,
-            lte: todayEnd,
-          },
-        },
-      }),
-
-      this.prisma.task.count({
-        where: {
-          project_id: projectId,
-          archived_at: null,
-          deleted_at: null,
-          parent_task_id: null,
-          completed_at: {
-            gte: last7DaysFrom,
-            lte: todayEnd,
-          },
-        },
-      }),
-
-      this.prisma.task.count({
-        where: {
-          project_id: projectId,
-          archived_at: null,
-          deleted_at: null,
-          parent_task_id: null,
-          due_date: {
-            gte: now.startOf('day').toJSDate(),
-            lte: next7DaysTo,
-          },
-        },
-      }),
-
-      this.prisma.task.groupBy({
-        by: ['status'],
-        where: {
-          project_id: projectId,
-          archived_at: null,
-          deleted_at: null,
-          parent_task_id: null,
-        },
-        _count: true,
-        orderBy: {
-          status: 'desc',
-        },
-      }),
-
-      this.prisma.task.groupBy({
-        by: ['priority'],
-        where: {
-          project_id: projectId,
-          archived_at: null,
-          deleted_at: null,
-          parent_task_id: null,
-        },
-        _count: true,
-        orderBy: {
-          priority: 'desc',
-        },
-      }),
-
-      this.prisma.task.groupBy({
-        by: ['assignee_id'],
-        where: {
-          project_id: projectId,
-          archived_at: null,
-          deleted_at: null,
-          parent_task_id: null,
-        },
-        _count: true,
-        orderBy: {
-          _count: {
-            creator_id: 'desc',
-          },
-        },
-      }),
-
-      // this.prisma.taskActivityLog.findMany({
-      //   where: {
-      //     project_id: project.id,
-      //   },
-      //   orderBy: {
-      //     created_at: 'desc',
-      //   },
-      //   take: 10,
-      // }),
-    ]);
-
-    const recentActivities =
-      await this.clickhouseService.getProjectLatestActivities(project.id);
+    ] = tasksStats;
 
     const taskIds = [
       ...new Set(
