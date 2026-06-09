@@ -244,9 +244,10 @@ model Project {
   inboxItems InboxItem[]
   sprints    Sprint[]
 
-  created_at DateTime  @default(now())
-  updated_at DateTime? @updatedAt
+  created_at DateTime    @default(now())
+  updated_at DateTime?   @updatedAt
   deleted_at DateTime?
+  labels     TaskLabel[]
 
   @@unique([workspace_id, slug])
   @@index([workspace_id])
@@ -316,6 +317,7 @@ model Task {
   updated_at   DateTime?     @updatedAt
   deleted_at   DateTime?
   taskComments TaskComment[]
+  labels       TaskLabel[]
 
   @@index([project_id])
   @@index([assignee_id])
@@ -514,4 +516,23 @@ model TaskComment {
 
   @@index([task_id, reply_to_comment_id, created_at(sort: Desc), id(sort: Desc)])
   @@index([reply_to_comment_id, created_at(sort: Asc), id(sort: Asc)])
+}
+
+model TaskLabel {
+  id String @id @default(uuid())
+
+  name  String
+  color String?
+
+  project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  project_id String
+
+  tasks Task[]
+
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+
+  @@unique([name, project_id])
+  @@index([name])
+  @@index([project_id])
 }

@@ -16,6 +16,7 @@ import { ProjectEpicsModule } from './modules/project-epics/project-epics.module
 import { InboxItemsModule } from './modules/inbox-items/inbox-items.module';
 import { SprintsModule } from './modules/sprints/sprints.module';
 import { TaskCommentsModule } from './modules/task-comments/task-comments.module';
+import { TaskLabelsModule } from './modules/task-labels/task-labels.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { TaskCommentsModule } from './modules/task-comments/task-comments.module
     InboxItemsModule,
     SprintsModule,
     TaskCommentsModule,
+    TaskLabelsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

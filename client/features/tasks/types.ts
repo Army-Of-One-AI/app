@@ -98,3 +98,9 @@ export type Epic = {
   createdAt: Date | null;
   updatedAt: Date | null;
 };
+
+export type TaskLabel = {
+  id: string;
+  name: string;
+  color?: string;
+};

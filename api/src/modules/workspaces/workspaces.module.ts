@@ -11,6 +11,7 @@ import { ProjectEpicsModule } from '../project-epics/project-epics.module';
 import { InboxItemsModule } from '../inbox-items/inbox-items.module';
 import { SprintsModule } from '../sprints/sprints.module';
 import { TaskCommentsModule } from '../task-comments/task-comments.module';
+import { TaskLabelsModule } from '../task-labels/task-labels.module';
 
 @Module({
   controllers: [WorkspacesController],
@@ -24,6 +25,7 @@ import { TaskCommentsModule } from '../task-comments/task-comments.module';
     InboxItemsModule,
     SprintsModule,
     TaskCommentsModule,
+    TaskLabelsModule,
   ],
   providers: [WorkspacesService, PrismaService],
   exports: [WorkspacesService],

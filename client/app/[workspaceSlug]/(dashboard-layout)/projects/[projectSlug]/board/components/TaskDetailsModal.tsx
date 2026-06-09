@@ -9,6 +9,7 @@ import {
   Task,
   TaskDetails,
   Epic,
+  TaskLabel,
 } from "@/features/tasks/types";
 import { TaskActivity, TaskPriority, TaskStatus } from "@/shared/types/enums";
 import RichTextEditor from "@/shared/ui/RichTextEditor";
@@ -31,6 +32,7 @@ import useSlugs from "@/shared/hooks/useSlugs";
 import SearchBar from "@/shared/ui/SearchBar";
 import { Sprint } from "@/features/sprints/types";
 import TaskComments from "@/shared/ui/TaskComments";
+import LabelsSelector from "@/shared/ui/LabelsSelector";
 
 type Props = {
   taskId: string;
@@ -39,6 +41,7 @@ type Props = {
   members: ProjectMember[];
   epics: Epic[];
   sprints: Sprint[];
+  labels: TaskLabel[];
   onClose: () => void;
   onUpdate: (task: Task) => void;
   onClickSubtask: (subtask: Task) => void;
@@ -67,6 +70,7 @@ export default function TaskDetailsModal({
   onClickSubtask,
   sprints,
   epics,
+  labels,
 }: Props) {
   const queryClient = useQueryClient();
 
@@ -351,16 +355,14 @@ export default function TaskDetailsModal({
         >
           <div className="flex items-center justify-end">
             <button
-              className={`relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-[var(--border)] ${
-                isOpenPopover && `border border-[var(--btn-primary-bg)]`
-              }`}
+              className={`relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-[var(--border)] ${isOpenPopover && `border border-[var(--btn-primary-bg)]`
+                }`}
               type="button"
               onClick={() => setOpenPopover((curr) => !curr)}
             >
               <div
-                className={`${
-                  isOpenPopover && `bg-[var(--btn-primary-bg)] opacity-20`
-                } absolute h-full w-full`}
+                className={`${isOpenPopover && `bg-[var(--btn-primary-bg)] opacity-20`
+                  } absolute h-full w-full`}
               />
 
               <Ellipsis className="relative transition-colors" size={20} />
@@ -600,9 +602,8 @@ export default function TaskDetailsModal({
                 )?.[1].label ?? status}
 
                 <span
-                  className={`transition-transform ${
-                    isStatusOpen ? "rotate-180" : ""
-                  }`}
+                  className={`transition-transform ${isStatusOpen ? "rotate-180" : ""
+                    }`}
                 >
                   <ChevronDown size={20} />
                 </span>
@@ -622,11 +623,10 @@ export default function TaskDetailsModal({
                             setStatus(key as TaskStatus);
                             setIsStatusOpen(false);
                           }}
-                          className={`flex w-full items-center px-6 py-2.5 text-left transition hover:bg-[var(--secondary)] ${
-                            isSelected
-                              ? "border-l-2 border-[var(--primary)] bg-[var(--secondary)]"
-                              : ""
-                          }`}
+                          className={`flex w-full items-center px-6 py-2.5 text-left transition hover:bg-[var(--secondary)] ${isSelected
+                            ? "border-l-2 border-[var(--primary)] bg-[var(--secondary)]"
+                            : ""
+                            }`}
                         >
                           <span
                             style={{
@@ -963,6 +963,12 @@ export default function TaskDetailsModal({
                       </div>
                     )}
                   </div>
+                </DetailRow>
+                <DetailRow label="Labels">
+                  <LabelsSelector
+                    onCreate={() => { }}
+                    labels={labels}
+                  />
                 </DetailRow>
 
                 <DetailRow label="Priority">

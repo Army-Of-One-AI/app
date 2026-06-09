@@ -52,6 +52,8 @@ import { UpdateSprintDto } from '../sprints/dto/update-sprint.dto';
 import { CreateSprintDto } from '../sprints/dto/create-sprint.dto';
 import { TaskCommentsService } from '../task-comments/task-comments.service';
 import { CreateCommentDto } from '../task-comments/dto/create-comment.dto';
+import { TaskLabelsService } from '../task-labels/task-labels.service';
+import CreateTaskLabelDto from '../task-labels/dto/create-task-label.dto';
 
 @Controller('workspaces')
 export class WorkspacesController {
@@ -63,6 +65,7 @@ export class WorkspacesController {
     private readonly projectEpicsService: ProjectEpicsService,
     private readonly sprintsService: SprintsService,
     private readonly taskCommentsService: TaskCommentsService,
+    private readonly taskLabelsService: TaskLabelsService,
   ) {}
 
   @UseGuards(JWTAuthGuard)
@@ -572,5 +575,45 @@ export class WorkspacesController {
       cursorCreatedAt,
       cursorId,
     });
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
+  @Get(':workspaceSlug/projects/:projectSlug/labels')
+  async getProjectLabels(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+  ) {
+    return await this.taskLabelsService.getProjectLabels(
+      workspaceSlug,
+      projectSlug,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Post(':workspaceSlug/projects/:projectSlug/labels')
+  async createLabel(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Body() payload: CreateTaskLabelDto,
+  ) {
+    return await this.taskLabelsService.create(
+      workspaceSlug,
+      projectSlug,
+      payload,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @Delete(':workspaceSlug/projects/:projectSlug/labels/:labelId')
+  async deleteLabel(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('projectSlug') projectSlug: string,
+    @Param('labelId') labelId: string,
+  ) {
+    return await this.taskLabelsService.delete(
+      workspaceSlug,
+      projectSlug,
+      labelId,
+    );
   }
 }

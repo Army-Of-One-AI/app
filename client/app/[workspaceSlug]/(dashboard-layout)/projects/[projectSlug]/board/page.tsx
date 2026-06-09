@@ -50,6 +50,7 @@ import TaskCardPreview from "./components/TaskCardPreview";
 import BoardMetric from "./components/BoardMetric";
 import EmptyBoardState from "./components/EmptyBoardState";
 import FilterChipButton from "./components/FilterChipButton";
+import useTaskLabels from "@/features/tasks/hooks/useTaskLabels";
 
 const columns = [
   { key: TaskStatus.Backlog, title: "Backlog" },
@@ -146,6 +147,8 @@ export default function ProjectBoardPage() {
     isFetching,
     error,
   } = useTasksByProjectSlug(projectSlug, workspaceSlug);
+
+  const { data: labels } = useTaskLabels(workspaceSlug, projectSlug)
 
   const createTaskMutation = useCreateTask(workspaceSlug, projectSlug);
   const { mutateAsync: updateTask } = useUpdateTask();
@@ -303,7 +306,7 @@ export default function ProjectBoardPage() {
         !memberFiltersReady && selectedAssigneeIds.length === 0
           ? true
           : assigneeSet.has(task.assignee?.id ?? "") ||
-            (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
+          (!task.assignee && assigneeSet.has(UNASSIGNED_MEMBER_ID));
 
       const matchesReporter =
         !memberFiltersReady && selectedReporterIds.length === 0
@@ -314,7 +317,7 @@ export default function ProjectBoardPage() {
         !epicFiltersReady && selectedEpicIds.length === 0
           ? true
           : epicSet.has(task.epic?.id ?? "") ||
-            (!task.epic && epicSet.has(UNASSIGNED_EPIC_ID));
+          (!task.epic && epicSet.has(UNASSIGNED_EPIC_ID));
 
       const matchesSprint =
         selectedSprintIds.length === 0 ||
@@ -630,9 +633,8 @@ export default function ProjectBoardPage() {
   const buildBoardUrl = (params: URLSearchParams) => {
     const nextQuery = params.toString();
 
-    return `/${workspaceSlug}/projects/${projectSlug}/board${
-      nextQuery ? `?${nextQuery}` : ""
-    }`;
+    return `/${workspaceSlug}/projects/${projectSlug}/board${nextQuery ? `?${nextQuery}` : ""
+      }`;
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -655,9 +657,9 @@ export default function ProjectBoardPage() {
       current.map((task) =>
         task.id === taskId
           ? {
-              ...task,
-              status: nextStatus,
-            }
+            ...task,
+            status: nextStatus,
+          }
           : task
       )
     );
@@ -840,6 +842,7 @@ export default function ProjectBoardPage() {
         showHeader: false,
         modalContent: (
           <TaskDetailsModal
+            labels={labels || []}
             sprints={sprints}
             epics={epics || []}
             members={members ?? []}
