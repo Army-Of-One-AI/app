@@ -2,7 +2,14 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { HTMLAttributes, useEffect, useMemo, useRef, useState } from "react";
+import {
+  HTMLAttributes,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 
 type Option = {
@@ -19,6 +26,7 @@ type Props = {
   placeholder?: string;
   showAllOption?: boolean;
   allOptionLabel?: string;
+  disabled?: boolean;
 };
 
 const ALL_VALUE = "__all__";
@@ -32,11 +40,18 @@ export default function Select({
   placeholder = "Select an option",
   allOptionLabel = "All items",
   showAllOption = false,
+  disabled = false,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [searchText, setSearchText] = useState("");
   const [isOpen, setOpen] = useState(false);
+  const [dropdownRect, setDropdownRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+  } | null>(null);
 
   const normalizedSelectedValue =
     selectedValue === undefined ||
@@ -77,7 +92,12 @@ export default function Select({
 
   useEffect(() => {
     const handleOnClickOutside = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) {
+      const target = e.target as Node;
+
+      if (
+        !ref.current?.contains(target) &&
+        !dropdownRef.current?.contains(target)
+      ) {
         setOpen(false);
       }
     };
@@ -98,12 +118,128 @@ export default function Select({
     setSearchText("");
   };
 
+  useEffect(() => {
+    if (!isOpen) {
+      setDropdownRect(null);
+      return;
+    }
+
+    const updateDropdownRect = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      setDropdownRect({
+        left: rect.left,
+        top: rect.bottom + 8,
+        width: rect.width,
+      });
+    };
+
+    updateDropdownRect();
+    window.addEventListener("resize", updateDropdownRect);
+    window.addEventListener("scroll", updateDropdownRect, true);
+
+    return () => {
+      window.removeEventListener("resize", updateDropdownRect);
+      window.removeEventListener("scroll", updateDropdownRect, true);
+    };
+  }, [isOpen]);
+
+  const dropdown =
+    typeof document !== "undefined"
+      ? createPortal(
+          <AnimatePresence>
+            {isOpen && dropdownRect && (
+              <motion.div
+                ref={dropdownRef}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                style={{
+                  left: dropdownRect.left,
+                  top: dropdownRect.top,
+                  width: dropdownRect.width,
+                }}
+                className="fixed z-[9999] overflow-hidden rounded-xl border border-(--border) bg-(--surface) shadow-xl"
+              >
+                {searchable && (
+                  <div className="flex items-center gap-2 border-b border-(--border) px-3 py-2">
+                    <Search size={15} className="text-(--text-muted)" />
+
+                    <input
+                      autoFocus
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      placeholder="Search..."
+                      className="w-full bg-transparent text-sm text-(--text-primary) outline-none placeholder:text-(--text-muted)"
+                    />
+
+                    {searchText && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchText("")}
+                        className="rounded-md p-1 text-(--text-muted) hover:bg-(--surface-secondary) hover:text-(--text-primary)"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div className="max-h-64 overflow-y-auto p-1.5">
+                  {filteredItems.length > 0 ? (
+                    filteredItems.map((item) => {
+                      const isSelected =
+                        item.value === normalizedSelectedValue;
+
+                      return (
+                        <button
+                          type="button"
+                          key={item.value}
+                          onClick={() => handleSelect(item.value)}
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                            isSelected
+                              ? "bg-(--selected) text-(--primary)"
+                              : "text-(--text-primary) hover:bg-(--surface-secondary)"
+                          }`}
+                        >
+                          <span className="truncate">{item.label}</span>
+
+                          {isSelected && (
+                            <Check
+                              size={15}
+                              className="shrink-0 text-(--primary)"
+                            />
+                          )}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="px-3 py-6 text-center text-sm text-(--text-muted)">
+                      No results found
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )
+      : null;
+
   return (
-    <div ref={ref} className={`relative ${className ?? ""}`}>
+    <div
+      ref={ref}
+      className={`relative ${className ?? ""}`}
+    >
       <button
         type="button"
-        onClick={() => setOpen((curr) => !curr)}
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-(--border) bg-(--surface) px-3 py-2.5 text-left text-sm text-(--text-primary) shadow-sm outline-none transition hover:border-(--primary)/60 focus:border-(--primary) focus:ring-2 focus:ring-(--primary)/15"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) setOpen((curr) => !curr);
+        }}
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-(--border) bg-(--surface) px-3 py-2.5 text-left text-sm text-(--text-primary) shadow-sm outline-none transition hover:border-(--primary)/60 focus:border-(--primary) focus:ring-2 focus:ring-(--primary)/15 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-(--border)"
       >
         <span
           className={`truncate ${
@@ -121,75 +257,7 @@ export default function Select({
         />
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-(--border) bg-(--surface) shadow-xl"
-          >
-            {searchable && (
-              <div className="flex items-center gap-2 border-b border-(--border) px-3 py-2">
-                <Search size={15} className="text-(--text-muted)" />
-
-                <input
-                  autoFocus
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full bg-transparent text-sm text-(--text-primary) outline-none placeholder:text-(--text-muted)"
-                />
-
-                {searchText && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchText("")}
-                    className="rounded-md p-1 text-(--text-muted) hover:bg-(--surface-secondary) hover:text-(--text-primary)"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-            )}
-
-            <div className="max-h-64 overflow-y-auto p-1.5">
-              {filteredItems.length > 0 ? (
-                filteredItems.map((item) => {
-                  const isSelected = item.value === normalizedSelectedValue;
-
-                  return (
-                    <button
-                      type="button"
-                      key={item.value}
-                      onClick={() => handleSelect(item.value)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
-                        isSelected
-                          ? "bg-(--selected) text-(--primary)"
-                          : "text-(--text-primary) hover:bg-(--surface-secondary)"
-                      }`}
-                    >
-                      <span className="truncate">{item.label}</span>
-
-                      {isSelected && (
-                        <Check
-                          size={15}
-                          className="shrink-0 text-(--primary)"
-                        />
-                      )}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="px-3 py-6 text-center text-sm text-(--text-muted)">
-                  No results found
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {dropdown}
     </div>
   );
 }

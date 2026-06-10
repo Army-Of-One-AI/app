@@ -130,59 +130,103 @@ export const TASK_STATUS_UPDATE_ROLES: ProjectRole[] = [
   ProjectRole.Member,
 ];
 
+type ProjectPermissions = {
+  project: {
+    canViewProject: boolean;
+    canUpdateProject: boolean;
+    canDeleteProject: boolean;
+    canManageProjectMembers: boolean;
+  };
+  task: {
+    canCreateTask: boolean;
+    canUpdateTask: boolean;
+    canDeleteTask: boolean;
+    canAssignTask: boolean;
+    canArchiveTask: boolean;
+    canUpdateTaskStatus: boolean;
+  };
+};
+
+type WorkspacePermissions = {
+  workspace: {
+    canUpdate: boolean;
+    canDelete: boolean;
+  };
+  project: {
+    canCreate: boolean;
+  };
+  member: {
+    canView: boolean;
+    canManage: boolean;
+  };
+};
+
+type ProjectPermissionEntry = {
+  id: string;
+  slug: string;
+  role: ProjectRole;
+  permissions: ProjectPermissions;
+};
+
+type ProjectPermissionsLookup = {
+  byId: Record<string, ProjectPermissionEntry>;
+  bySlug: Record<string, ProjectPermissionEntry>;
+};
+
+function hasRole<Role extends string>(
+  role: Role | null | undefined,
+  allowedRoles: readonly Role[],
+) {
+  return !!role && allowedRoles.includes(role);
+}
+
 @Injectable()
 export class PermissionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private _getProjectPermissions(params: {
-    workspaceRole?: WorkspaceRole | null;
+  private getProjectPermissions(params: {
     projectRole?: ProjectRole | null;
-  }) {
+  }): ProjectPermissions {
     const { projectRole } = params;
 
     return {
       project: {
-        canViewProject: !!projectRole,
-
-        canUpdateProject:
-          !!projectRole && PROJECT_UPDATE_ROLES.includes(projectRole),
-
-        canDeleteProject:
-          !!projectRole && PROJECT_DELETE_ROLES.includes(projectRole),
-
-        canManageProjectMembers:
-          !!projectRole && PROJECT_MEMBER_MANAGE_ROLES.includes(projectRole),
+        canViewProject: hasRole(projectRole, PROJECT_READ_ROLES),
+        canUpdateProject: hasRole(projectRole, PROJECT_UPDATE_ROLES),
+        canDeleteProject: hasRole(projectRole, PROJECT_DELETE_ROLES),
+        canManageProjectMembers: hasRole(
+          projectRole,
+          PROJECT_MEMBER_MANAGE_ROLES,
+        ),
       },
 
       task: {
-        canCreateTask: !!projectRole && TASK_CREATE_ROLES.includes(projectRole),
-
-        canUpdateTask: !!projectRole && TASK_UPDATE_ROLES.includes(projectRole),
-
-        canDeleteTask: !!projectRole && TASK_DELETE_ROLES.includes(projectRole),
-
-        canAssignTask: !!projectRole && TASK_ASSIGN_ROLES.includes(projectRole),
-
-        canArchiveTask:
-          !!projectRole && TASK_ARCHIVE_ROLES.includes(projectRole),
-
-        canUpdateTaskStatus:
-          !!projectRole && TASK_STATUS_UPDATE_ROLES.includes(projectRole),
+        canCreateTask: hasRole(projectRole, TASK_CREATE_ROLES),
+        canUpdateTask: hasRole(projectRole, TASK_UPDATE_ROLES),
+        canDeleteTask: hasRole(projectRole, TASK_DELETE_ROLES),
+        canAssignTask: hasRole(projectRole, TASK_ASSIGN_ROLES),
+        canArchiveTask: hasRole(projectRole, TASK_ARCHIVE_ROLES),
+        canUpdateTaskStatus: hasRole(projectRole, TASK_STATUS_UPDATE_ROLES),
       },
     };
   }
 
-  private _getWorkspacePermissions(params: {
+  private getWorkspacePermissions(params: {
     workspaceRole?: WorkspaceRole | null;
-  }) {
+  }): WorkspacePermissions {
     const { workspaceRole } = params;
 
     return {
+      workspace: {
+        canUpdate: hasRole(workspaceRole, WORKSPACE_UPDATE_ROLES),
+        canDelete: hasRole(workspaceRole, WORKSPACE_DELETE_ROLES),
+      },
+      project: {
+        canCreate: hasRole(workspaceRole, WORKSPACE_CREATE_PROJECT_ROLES),
+      },
       member: {
         canView: !!workspaceRole,
-        canManage:
-          !!workspaceRole &&
-          WORKSPACE_USERS_MANAGEMENT_ROLES.includes(workspaceRole),
+        canManage: hasRole(workspaceRole, WORKSPACE_USERS_MANAGEMENT_ROLES),
       },
     };
   }
@@ -210,7 +254,7 @@ export class PermissionsService {
 
     return {
       projectRole: projectMember?.role ?? null,
-      permissions: this._getProjectPermissions({
+      permissions: this.getProjectPermissions({
         projectRole: projectMember?.role ?? null,
       }),
     };
@@ -229,14 +273,71 @@ export class PermissionsService {
       },
       select: {
         role: true,
+        workspace_id: true,
       },
     });
 
+    if (!workspaceMember) {
+      return {
+        workspaceRole: null,
+        workspacePermissions: this.getWorkspacePermissions({
+          workspaceRole: null,
+        }),
+        projectPermissions: {
+          byId: {},
+          bySlug: {},
+        },
+      };
+    }
+
+    const projectMembers = await this.prisma.projectMember.findMany({
+      where: {
+        member_id: params.userId,
+        project: {
+          workspace_id: workspaceMember.workspace_id,
+          deleted_at: null,
+        },
+      },
+      select: {
+        role: true,
+        project: {
+          select: {
+            id: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    const projectPermissions: ProjectPermissionsLookup = {
+      byId: {},
+      bySlug: {},
+    };
+
+    projectMembers.forEach((projectMember) => {
+      const permissions = this.getProjectPermissions({
+        projectRole: projectMember.role,
+      });
+      const entry: ProjectPermissionEntry = {
+        id: projectMember.project.id,
+        slug: projectMember.project.slug,
+        role: projectMember.role,
+        permissions,
+      };
+
+      projectPermissions.byId[entry.id] = entry;
+      projectPermissions.bySlug[entry.slug] = entry;
+    });
+
+    const workspacePermissions: WorkspacePermissions =
+      this.getWorkspacePermissions({
+        workspaceRole: workspaceMember.role,
+      });
+
     return {
-      workspaceRole: workspaceMember?.role ?? null,
-      permissions: this._getWorkspacePermissions({
-        workspaceRole: workspaceMember?.role ?? null,
-      }),
+      workspaceRole: workspaceMember.role,
+      workspacePermissions,
+      projectPermissions,
     };
   }
 }

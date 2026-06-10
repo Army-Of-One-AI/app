@@ -2,10 +2,12 @@ import { FolderKanban, Plus, SearchX } from "lucide-react";
 
 export default function EmptyState({
   hasActiveFilters,
+  canCreateProject,
   onCreate,
   onResetFilters,
 }: {
   hasActiveFilters: boolean;
+  canCreateProject: boolean;
   onCreate: () => void;
   onResetFilters: () => void;
 }) {
@@ -20,7 +22,9 @@ export default function EmptyState({
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--text-secondary)]">
         {hasActiveFilters
           ? "Clear the current filters or search for a different project name."
-          : "Create your first project to start organizing tasks, documents, and delivery work."}
+          : canCreateProject
+            ? "Create your first project to start organizing tasks, documents, and delivery work."
+            : "You do not have access to create projects in this workspace yet."}
       </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
         {hasActiveFilters && (
@@ -33,14 +37,16 @@ export default function EmptyState({
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={onCreate}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 text-sm font-medium text-[var(--btn-primary-color)] transition hover:bg-[var(--btn-primary-bg-hover)]"
-        >
-          <Plus size={16} />
-          Create project
-        </button>
+        {canCreateProject && (
+          <button
+            type="button"
+            onClick={onCreate}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 text-sm font-medium text-[var(--btn-primary-color)] transition hover:bg-[var(--btn-primary-bg-hover)]"
+          >
+            <Plus size={16} />
+            Create project
+          </button>
+        )}
       </div>
     </section>
   );

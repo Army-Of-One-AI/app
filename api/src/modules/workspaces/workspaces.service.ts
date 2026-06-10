@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -377,6 +378,19 @@ export class WorkspacesService {
 
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
+    }
+
+    const currentMemberRole = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspace_id_member_id: {
+          member_id: memberId,
+          workspace_id: workspace.id,
+        },
+      },
+    });
+
+    if (currentMemberRole?.role === 'Owner') {
+      throw new ForbiddenException('Cannot update role of owner');
     }
 
     return this.prisma.workspaceMember.update({

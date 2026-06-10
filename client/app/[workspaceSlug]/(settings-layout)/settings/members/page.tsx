@@ -1,6 +1,8 @@
 "use client";
 
 import InviteMembersModal from "./components/InviteMembersModal";
+import useCurrentUserWorkspacePermissions from "@/features/auth/hooks/useCurrentUserWorkspacePermissions";
+import useUpdateWorkspaceMemberRole from "@/features/workspaces/hooks/useUpdateWorkspaceMemberRole";
 import useWorkspaceInvites from "@/features/workspaces/hooks/useWorkspaceInvites";
 import useWorkspaceMembers from "@/features/workspaces/hooks/useWorkspaceMembers";
 // import useRevokeWorkspaceInvite from "@/features/workspaces/hooks/useRevokeWorkspaceInvite";
@@ -32,6 +34,8 @@ const roleStyles: Record<WorkspaceRole, string> = {
   [WorkspaceRole.Admin]: "bg-blue-500/10 text-blue-600",
   [WorkspaceRole.Member]: "bg-(--border) text-(--text-secondary)",
 };
+
+const editableRoleOptions = [WorkspaceRole.Admin, WorkspaceRole.Member];
 
 const inviteStatusStyles: Record<InviteStatus, string> = {
   Pending: "bg-amber-500/10 text-amber-600",
@@ -74,13 +78,34 @@ export default function SettingsMembersPage() {
   const [searchText, setSearchText] = useState("");
 
   const workspaceMembers = useWorkspaceMembers(slugs.workspace.slug);
-  const workspaceInvites = useWorkspaceInvites(slugs.workspace.slug);
+  const {
+    data: currentUserWorkspacePermissions,
+    isLoading: isLoadingPermissions,
+  } =
+    useCurrentUserWorkspacePermissions(slugs.workspace.slug);
+  const canManageMembers =
+    currentUserWorkspacePermissions?.workspacePermissions.member.canManage ??
+    false;
+  const workspaceInvites = useWorkspaceInvites(slugs.workspace.slug, {
+    enabled: !isLoadingPermissions && canManageMembers,
+  });
+  const {
+    mutate: updateMemberRole,
+    isPending: isUpdatingMemberRole,
+    variables: updatingMemberRoleVariables,
+  } = useUpdateWorkspaceMemberRole();
 
   // const { mutate: revokeInvite, isPending: isRevoking } =
   //   useRevokeWorkspaceInvite();
 
-  const members = workspaceMembers.data ?? [];
-  const invites = (workspaceInvites.data ?? []) as WorkspaceInvite[];
+  const members = useMemo(
+    () => workspaceMembers.data ?? [],
+    [workspaceMembers.data]
+  );
+  const invites = useMemo(
+    () => (workspaceInvites.data ?? []) as WorkspaceInvite[],
+    [workspaceInvites.data]
+  );
 
   const filteredMembers = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -115,11 +140,33 @@ export default function SettingsMembersPage() {
     });
   };
 
-  const handleRevokeInvite = (invite: WorkspaceInvite) => {
+  const handleRevokeInvite = () => {
     // revokeInvite({
     //   workspaceSlug: slugs.workspace.slug,
     //   inviteId: invite.id,
     // });
+  };
+
+  const handleUpdateMemberRole = (
+    memberId: string,
+    currentRole: WorkspaceRole,
+    nextRole: string | number | undefined
+  ) => {
+    if (
+      !canManageMembers ||
+      currentRole === WorkspaceRole.Owner ||
+      !nextRole ||
+      nextRole === currentRole ||
+      nextRole === WorkspaceRole.Owner
+    ) {
+      return;
+    }
+
+    updateMemberRole({
+      workspaceSlug: slugs.workspace.slug,
+      memberId,
+      role: nextRole as WorkspaceRole,
+    });
   };
 
   return (
@@ -136,12 +183,14 @@ export default function SettingsMembersPage() {
           </p>
         </div>
 
-        <Button onClick={openInviteModal} className="shrink-0 px-5">
-          <span className="inline-flex items-center gap-2">
-            <Plus size={16} />
-            Invite
-          </span>
-        </Button>
+        {canManageMembers && (
+          <Button onClick={openInviteModal} className="shrink-0 px-5">
+            <span className="inline-flex items-center gap-2">
+              <Plus size={16} />
+              Invite
+            </span>
+          </Button>
+        )}
       </div>
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -169,7 +218,7 @@ export default function SettingsMembersPage() {
       </div>
 
       <section
-        className={`mt-6 overflow-hidden rounded-2xl border bg-(--card) ${classNames.border}`}
+        className={`mt-6 overflow-visible rounded-2xl border bg-(--card) ${classNames.border}`}
       >
         <DataTable
           isLoading={workspaceMembers.isLoading}
@@ -211,15 +260,40 @@ export default function SettingsMembersPage() {
             {
               field: "role",
               label: "Role",
-              render: (member) => (
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                    roleStyles[member.role]
-                  }`}
-                >
-                  {roleLabels[member.role]}
-                </span>
-              ),
+              render: (member) => {
+                const canEditRole =
+                  canManageMembers && member.role !== WorkspaceRole.Owner;
+                const isUpdatingThisMember =
+                  isUpdatingMemberRole &&
+                  updatingMemberRoleVariables?.memberId === member.id;
+
+                if (canEditRole) {
+                  return (
+                    <Select
+                      className="w-[150px]"
+                      selectedValue={member.role}
+                      disabled={isUpdatingThisMember}
+                      items={editableRoleOptions.map((value) => ({
+                        label: roleLabels[value],
+                        value,
+                      }))}
+                      onItemClicked={(value) =>
+                        handleUpdateMemberRole(member.id, member.role, value)
+                      }
+                    />
+                  );
+                }
+
+                return (
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                      roleStyles[member.role]
+                    }`}
+                  >
+                    {roleLabels[member.role]}
+                  </span>
+                );
+              },
             },
             {
               field: "teamsCount",
@@ -243,32 +317,33 @@ export default function SettingsMembersPage() {
         />
       </section>
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-base font-semibold text-(--text-primary)">
-              Invitations
-            </h2>
+      {canManageMembers ? (
+        <section className="mt-10">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-(--text-primary)">
+                Invitations
+              </h2>
 
-            <p className="mt-1 text-sm text-(--text-secondary)">
-              View pending, accepted, expired, and revoked workspace invites.
-            </p>
+              <p className="mt-1 text-sm text-(--text-secondary)">
+                View pending, accepted, expired, and revoked workspace invites.
+              </p>
+            </div>
+
+            <span className="rounded-full bg-(--border) px-3 py-1 text-xs font-medium text-(--text-secondary)">
+              {pendingInvitesCount} pending
+            </span>
           </div>
 
-          <span className="rounded-full bg-(--border) px-3 py-1 text-xs font-medium text-(--text-secondary)">
-            {pendingInvitesCount} pending
-          </span>
-        </div>
-
-        <div
-          className={`overflow-hidden rounded-2xl border bg-(--card) ${classNames.border}`}
-        >
-          <DataTable
-            isLoading={workspaceInvites.isLoading}
-            skeletonRows={3}
-            getRowKey={(row) => row.id}
-            data={invites}
-            columns={[
+          <div
+            className={`overflow-hidden rounded-2xl border bg-(--card) ${classNames.border}`}
+          >
+            <DataTable
+              isLoading={workspaceInvites.isLoading}
+              skeletonRows={3}
+              getRowKey={(row) => row.id}
+              data={invites}
+              columns={[
               {
                 field: "email",
                 label: "Invitee",
@@ -353,14 +428,14 @@ export default function SettingsMembersPage() {
                 label: "",
                 render: (invite) => {
                   const status = getInviteStatus(invite);
-                  const canRevoke = status === "Pending";
+                  const canRevoke = canManageMembers && status === "Pending";
 
                   return (
                     <div className="flex justify-end">
                       <button
                         type="button"
-                        // disabled={!canRevoke || isRevoking}
-                        onClick={() => handleRevokeInvite(invite)}
+                        disabled={!canRevoke}
+                        onClick={handleRevokeInvite}
                         className="
                           inline-flex items-center gap-2 rounded-lg px-3 py-1.5
                           text-sm font-medium text-(--danger) transition
@@ -384,10 +459,22 @@ export default function SettingsMembersPage() {
                   );
                 },
               },
-            ]}
-          />
-        </div>
-      </section>
+              ]}
+            />
+          </div>
+        </section>
+      ) : (
+        <section
+          className={`mt-10 rounded-2xl border bg-(--card) px-5 py-6 ${classNames.border}`}
+        >
+          <h2 className="text-base font-semibold text-(--text-primary)">
+            Invitations
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-(--text-secondary)">
+            Workspace invitations are only visible to owners and admins.
+          </p>
+        </section>
+      )}
     </main>
   );
 }

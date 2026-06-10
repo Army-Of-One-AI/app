@@ -52,6 +52,10 @@ export class ClickHouseService implements OnModuleDestroy {
   }
 
   async sync() {
+    await this.client.command({
+      query: 'TRUNCATE TABLE task_activity_logs',
+    });
+
     const batchSize = 1000;
     let cursor: string | undefined;
     let inserted = 0;

@@ -1,6 +1,7 @@
 "use client";
 
 import useAuthentication from "@/features/auth/hooks/useAuthentication";
+import useCurrentUserWorkspacePermissions from "@/features/auth/hooks/useCurrentUserWorkspacePermissions";
 import useAddMemberToProject from "@/features/projects/hooks/useAddMemberToProject";
 import useGetProjectDetailsBySlug from "@/features/projects/hooks/useGetProjectDetailsBySlug";
 import useRemoveMemberFromProject from "@/features/projects/hooks/useRemoveMemberFromProject";
@@ -43,6 +44,18 @@ export default function ProjectActions({
   );
 
   const currentUserId = userInfo?.id;
+  const { data: currentUserWorkspacePermissions } =
+    useCurrentUserWorkspacePermissions(slugs.workspace.slug);
+  const currentProjectPermissions =
+    currentUserWorkspacePermissions?.projectPermissions.bySlug[
+      slugs.project.slug
+    ]?.permissions;
+  const canManageProjectMembers =
+    currentProjectPermissions?.project.canManageProjectMembers ?? false;
+  const canCreateTask =
+    currentProjectPermissions?.task.canCreateTask ?? false;
+  const canDeleteProject =
+    currentProjectPermissions?.project.canDeleteProject ?? false;
 
   const { data: projectDetails } = useGetProjectDetailsBySlug(
     slugs.project.slug,
@@ -125,152 +138,158 @@ export default function ProjectActions({
       <div
         className={`w-[250px] rounded-xl border bg-(--surface) p-1 shadow-2xl ${classNames.border}`}
       >
-        <button
-          type="button"
-          onClick={() => setOpenAddMember((curr) => !curr)}
-          className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-1 text-left text-sm text-(--text-primary) transition-all hover:bg-(--border)"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60 text-(--text-primary)">
-            <UsersRound size={16} />
-          </span>
+        {canManageProjectMembers && (
+          <button
+            type="button"
+            onClick={() => setOpenAddMember((curr) => !curr)}
+            className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-1 text-left text-sm text-(--text-primary) transition-all hover:bg-(--border)"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60 text-(--text-primary)">
+              <UsersRound size={16} />
+            </span>
 
-          <span className="flex-1">
-            <span className="block font-medium">Add member</span>
-          </span>
+            <span className="flex-1">
+              <span className="block font-medium">Add member</span>
+            </span>
 
-          <ChevronRight
-            size={16}
-            className={`transition-transform ${
-              isOpenAddMember ? "rotate-180" : "group-hover:translate-x-0.5"
-            }`}
-          />
+            <ChevronRight
+              size={16}
+              className={`transition-transform ${
+                isOpenAddMember ? "rotate-180" : "group-hover:translate-x-0.5"
+              }`}
+            />
 
-          <AnimatePresence>
-            {isOpenAddMember && (
-              <motion.div
-                initial={{ opacity: 0, x: -8, scale: 0.98 }}
-                animate={{ opacity: 1, x: 8, scale: 1 }}
-                exit={{ opacity: 0, x: -8, scale: 0.98 }}
-                transition={{ duration: 0.16, ease: "easeOut" }}
-                onClick={(event) => event.stopPropagation()}
-                className={`absolute left-full top-0 z-50 w-[350px] overflow-hidden rounded-xl border bg-(--surface) shadow-2xl ${classNames.border}`}
-              >
-                <div className="border-b border-(--border) px-3 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60">
-                      <UserPlus size={15} />
-                    </div>
+            <AnimatePresence>
+              {isOpenAddMember && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, x: 8, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.98 }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                  onClick={(event) => event.stopPropagation()}
+                  className={`absolute left-full top-0 z-50 w-[350px] overflow-hidden rounded-xl border bg-(--surface) shadow-2xl ${classNames.border}`}
+                >
+                  <div className="border-b border-(--border) px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60">
+                        <UserPlus size={15} />
+                      </div>
 
-                    <p className="text-sm font-semibold text-(--text-primary)">
-                      Add project members
-                    </p>
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-2 rounded-lg border border-(--border) bg-(--background) px-2.5 py-2">
-                    <Search size={14} className="text-(--text-secondary)" />
-                    <input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search members..."
-                      className="w-full bg-transparent text-sm text-(--text-primary) outline-none placeholder:text-(--text-secondary)"
-                    />
-                  </div>
-                </div>
-
-                <div className="max-h-[280px] overflow-y-auto p-1">
-                  {isLoadingWSMembers && <MemberSkeleton />}
-
-                  {!isLoadingWSMembers && filteredMembers.length === 0 && (
-                    <div className="px-4 py-8 text-center">
-                      <p className="text-sm font-medium text-(--text-primary)">
-                        No members found
-                      </p>
-                      <p className="mt-1 text-xs text-(--text-secondary)">
-                        Try another name or email.
+                      <p className="text-sm font-semibold text-(--text-primary)">
+                        Add project members
                       </p>
                     </div>
-                  )}
 
-                  {!isLoadingWSMembers &&
-                    filteredMembers.map((member) => {
-                      const isAdded = projectMemberIds.has(member.id);
-                      const isCurrentUser = member.id === currentUserId;
-                      const name =
-                        member.fullName || member.username || "Unnamed member";
+                    <div className="mt-3 flex items-center gap-2 rounded-lg border border-(--border) bg-(--background) px-2.5 py-2">
+                      <Search size={14} className="text-(--text-secondary)" />
+                      <input
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search members..."
+                        className="w-full bg-transparent text-sm text-(--text-primary) outline-none placeholder:text-(--text-secondary)"
+                      />
+                    </div>
+                  </div>
 
-                      return (
-                        <div
-                          key={member.id}
-                          onClick={async () => {
-                            if (!isAdded) {
-                              setMemberToAdd(member);
-                              return;
-                            }
+                  <div className="max-h-[280px] overflow-y-auto p-1">
+                    {isLoadingWSMembers && <MemberSkeleton />}
 
-                            setMemberToRemove(member);
-                          }}
-                          className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all hover:bg-(--border)"
-                        >
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-(--border) text-xs font-semibold text-(--text-primary)">
-                            {name.slice(0, 1).toUpperCase()}
-                          </div>
+                    {!isLoadingWSMembers && filteredMembers.length === 0 && (
+                      <div className="px-4 py-8 text-center">
+                        <p className="text-sm font-medium text-(--text-primary)">
+                          No members found
+                        </p>
+                        <p className="mt-1 text-xs text-(--text-secondary)">
+                          Try another name or email.
+                        </p>
+                      </div>
+                    )}
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <p className="truncate text-sm font-medium text-(--text-primary)">
-                                {name}
-                              </p>
+                    {!isLoadingWSMembers &&
+                      filteredMembers.map((member) => {
+                        const isAdded = projectMemberIds.has(member.id);
+                        const isCurrentUser = member.id === currentUserId;
+                        const name =
+                          member.fullName ||
+                          member.username ||
+                          "Unnamed member";
 
-                              {isCurrentUser && (
-                                <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-500">
-                                  You
-                                </span>
+                        return (
+                          <div
+                            key={member.id}
+                            onClick={async () => {
+                              if (!isAdded) {
+                                setMemberToAdd(member);
+                                return;
+                              }
+
+                              setMemberToRemove(member);
+                            }}
+                            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all hover:bg-(--border)"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-(--border) text-xs font-semibold text-(--text-primary)">
+                              {name.slice(0, 1).toUpperCase()}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <p className="truncate text-sm font-medium text-(--text-primary)">
+                                  {name}
+                                </p>
+
+                                {isCurrentUser && (
+                                  <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-500">
+                                    You
+                                  </span>
+                                )}
+                              </div>
+
+                              {member.email && (
+                                <p className="truncate text-xs text-(--text-secondary)">
+                                  {member.email}
+                                </p>
                               )}
                             </div>
 
-                            {member.email && (
-                              <p className="truncate text-xs text-(--text-secondary)">
-                                {member.email}
-                              </p>
-                            )}
+                            <span
+                              className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${
+                                isAdded
+                                  ? "border-emerald-500 bg-emerald-500 text-white"
+                                  : "border-(--border) bg-transparent"
+                              }`}
+                            >
+                              {isAdded && <Check size={13} strokeWidth={3} />}
+                            </span>
                           </div>
+                        );
+                      })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </button>
+        )}
 
-                          <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${
-                              isAdded
-                                ? "border-emerald-500 bg-emerald-500 text-white"
-                                : "border-(--border) bg-transparent"
-                            }`}
-                          >
-                            {isAdded && <Check size={13} strokeWidth={3} />}
-                          </span>
-                        </div>
-                      );
-                    })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </button>
+        {canCreateTask && (
+          <button
+            type="button"
+            onClick={() => {
+              router.push(
+                `/${slugs.workspace.slug}/projects/${slugs.project.slug}/board?action=create`
+              );
+              closePopover();
+            }}
+            className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-1 text-left text-sm text-(--text-primary) transition-all hover:bg-(--border)"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60 text-(--text-primary)">
+              <SquareCheck size={16} />
+            </span>
 
-        <button
-          type="button"
-          onClick={() => {
-            router.push(
-              `/${slugs.workspace.slug}/projects/${slugs.project.slug}/board?action=create`
-            );
-            closePopover();
-          }}
-          className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-1 text-left text-sm text-(--text-primary) transition-all hover:bg-(--border)"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--border)/60 text-(--text-primary)">
-            <SquareCheck size={16} />
-          </span>
-
-          <span className="flex-1">
-            <span className="block font-medium">Create new task</span>
-          </span>
-        </button>
+            <span className="flex-1">
+              <span className="block font-medium">Create new task</span>
+            </span>
+          </button>
+        )}
 
         <button
           type="button"
@@ -310,20 +329,24 @@ export default function ProjectActions({
           </span>
         </button>
 
-        <div className="my-1 h-px w-full bg-(--border)" />
+        {canDeleteProject && (
+          <>
+            <div className="my-1 h-px w-full bg-(--border)" />
 
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-1 text-sm text-red-500 transition-all hover:bg-red-500/10"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10">
-            <Trash size={16} />
-          </span>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-1 text-sm text-red-500 transition-all hover:bg-red-500/10"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10">
+                <Trash size={16} />
+              </span>
 
-          <span className="flex-1 text-left">
-            <span className="block font-medium">Delete project</span>
-          </span>
-        </button>
+              <span className="flex-1 text-left">
+                <span className="block font-medium">Delete project</span>
+              </span>
+            </button>
+          </>
+        )}
       </div>
 
       <AnimatePresence>

@@ -6,7 +6,7 @@ import DashboardLayout from "@/shared/ui/DashboardLayout/DashboardLayout";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const slugs = useSlugs();
-  const {} = useCurrentUserWorkspacePermissions(slugs.workspace.slug);
+  useCurrentUserWorkspacePermissions(slugs.workspace.slug);
 
   return <DashboardLayout>{children}</DashboardLayout>;
 }

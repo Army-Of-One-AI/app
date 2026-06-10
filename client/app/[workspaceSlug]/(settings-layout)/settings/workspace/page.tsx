@@ -2,6 +2,7 @@
 "use client";
 
 import slugify from "slugify";
+import useCurrentUserWorkspacePermissions from "@/features/auth/hooks/useCurrentUserWorkspacePermissions";
 import useWorkspaceDetailsBySlug from "@/features/workspaces/hooks/useWorkspaceDetailsBySlug";
 import { deleteWorkspace } from "@/features/workspaces/api/deleteWorkspace";
 import useSlugs from "@/shared/hooks/useSlugs";
@@ -31,6 +32,14 @@ export default function SettingsWorkspacePage() {
   const { data, isLoading, error, refetch } = useWorkspaceDetailsBySlug(
     slugs.workspace.slug
   );
+  const { data: currentUserWorkspacePermissions } =
+    useCurrentUserWorkspacePermissions(slugs.workspace.slug);
+  const canUpdateWorkspace =
+    currentUserWorkspacePermissions?.workspacePermissions.workspace.canUpdate ??
+    false;
+  const canDeleteWorkspace =
+    currentUserWorkspacePermissions?.workspacePermissions.workspace.canDelete ??
+    false;
 
   const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
@@ -83,6 +92,7 @@ export default function SettingsWorkspacePage() {
   };
 
   const handleSelectLogo = (file: File | undefined) => {
+    if (!canUpdateWorkspace) return;
     if (!file || !file.type.startsWith("image/")) return;
 
     const nextPreviewURL = URL.createObjectURL(file);
@@ -99,6 +109,8 @@ export default function SettingsWorkspacePage() {
   };
 
   const handleSaveWorkspace = async () => {
+    if (!canUpdateWorkspace) return;
+
     const payload = {
       ...(form.logoFile && { logoURL: form.logoURL }),
       name: form.name,
@@ -114,6 +126,8 @@ export default function SettingsWorkspacePage() {
   };
 
   const handleUpdateSlug = async () => {
+    if (!canUpdateWorkspace) return;
+
     await update({
       workspaceSlug: slugs.workspace.slug,
       payload: { slug: draftSlug, name: form.name },
@@ -126,6 +140,8 @@ export default function SettingsWorkspacePage() {
   };
 
   const handleDeleteWorkspace = async () => {
+    if (!canDeleteWorkspace) return;
+
     try {
       setIsDeletingWorkspace(true);
 
@@ -169,6 +185,12 @@ export default function SettingsWorkspacePage() {
             Manage your workspace name, branding, and settings that define how
             your team collaborates.
           </p>
+
+          {!canUpdateWorkspace && (
+            <p className="mt-3 max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-(--text-secondary)">
+              You have view-only access to workspace settings.
+            </p>
+          )}
         </div>
 
         <section className="mt-8 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
@@ -191,23 +213,27 @@ export default function SettingsWorkspacePage() {
                 ref={logoInputRef}
                 type="file"
                 accept="image/*"
+                disabled={!canUpdateWorkspace}
                 className="hidden"
                 onChange={(event) => handleSelectLogo(event.target.files?.[0])}
               />
 
-              <button
-                type="button"
-                onClick={() => logoInputRef.current?.click()}
-                className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 opacity-0 transition hover:opacity-100"
-              >
-                <Camera size={15} className="text-white" />
-              </button>
+              {canUpdateWorkspace && (
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 opacity-0 transition hover:opacity-100"
+                >
+                  <Camera size={15} className="text-white" />
+                </button>
+              )}
             </div>
           </SettingRow>
 
           <SettingRow label="Name">
             <Input
               value={form.name}
+              disabled={!canUpdateWorkspace}
               onChange={(value) =>
                 setForm((curr) => ({ ...curr, name: value }))
               }
@@ -217,11 +243,12 @@ export default function SettingsWorkspacePage() {
           <SettingRow label="URL">
             <button
               type="button"
+              disabled={!canUpdateWorkspace}
               onClick={() => {
                 setDraftSlug(form.slug);
                 setIsUrlModalOpen(true);
               }}
-              className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-left text-sm outline-none hover:border-[var(--primary)]"
+              className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-left text-sm outline-none hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-[var(--border)]"
             >
               <span className={classNames.text.secondary}>{APP_HOST}/</span>
               <span className="font-semibold">{form.slug}</span>
@@ -229,29 +256,33 @@ export default function SettingsWorkspacePage() {
           </SettingRow>
         </section>
 
-        <SectionTitle>Danger zone</SectionTitle>
+        {canDeleteWorkspace && (
+          <>
+            <SectionTitle>Danger zone</SectionTitle>
 
-        <section className="rounded-2xl border border-red-500/25 bg-red-500/5">
-          <div className="flex items-center justify-between px-4 py-5">
-            <div>
-              <div className="text-sm font-semibold">Delete workspace</div>
-              <p className={`text-sm ${classNames.text.secondary}`}>
-                Schedule workspace to be permanently deleted
-              </p>
-            </div>
+            <section className="rounded-2xl border border-red-500/25 bg-red-500/5">
+              <div className="flex items-center justify-between px-4 py-5">
+                <div>
+                  <div className="text-sm font-semibold">Delete workspace</div>
+                  <p className={`text-sm ${classNames.text.secondary}`}>
+                    Schedule workspace to be permanently deleted
+                  </p>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => setIsDeleteModalOpen(true)}
-              className="text-sm font-semibold text-red-400 hover:text-red-300"
-            >
-              Delete workspace
-            </button>
-          </div>
-        </section>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="text-sm font-semibold text-red-400 hover:text-red-300"
+                >
+                  Delete workspace
+                </button>
+              </div>
+            </section>
+          </>
+        )}
 
         <AnimatePresence mode="wait">
-          {hasChanges && (
+          {canUpdateWorkspace && hasChanges && (
             <motion.div
               initial={{ opacity: 0, translateX: -100 }}
               animate={{ opacity: 1, translateX: 1 }}
@@ -298,7 +329,7 @@ export default function SettingsWorkspacePage() {
       </main>
 
       <WorkspaceUrlModal
-        isOpen={isUrlModalOpen}
+        isOpen={canUpdateWorkspace && isUrlModalOpen}
         draftSlug={draftSlug}
         isSaving={isSaving}
         onClose={() => setIsUrlModalOpen(false)}
@@ -309,7 +340,7 @@ export default function SettingsWorkspacePage() {
       />
 
       <DeleteWorkspaceModal
-        isOpen={isDeleteModalOpen}
+        isOpen={canDeleteWorkspace && isDeleteModalOpen}
         isLoading={isDeletingWorkspace}
         workspaceName={form.name || "this workspace"}
         workspaceSlug={data.slug}
@@ -326,19 +357,23 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function Input({
   value,
+  disabled = false,
   onChange,
 }: {
   value: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
     <input
       value={value}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       className="
         w-full rounded-lg border border-[var(--border)] bg-transparent
         px-3 py-2 text-sm font-semibold outline-none
         focus:border-[var(--primary)]
+        disabled:cursor-not-allowed disabled:opacity-60
       "
     />
   );

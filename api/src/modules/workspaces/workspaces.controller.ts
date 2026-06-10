@@ -82,7 +82,7 @@ export class WorkspacesController {
     JWTAuthGuard,
     WorkspaceRoleGuard([
       WorkspaceRole.Owner,
-      WorkspaceRole.Owner,
+      WorkspaceRole.Admin,
       WorkspaceRole.Member,
     ]),
   )
@@ -174,7 +174,7 @@ export class WorkspacesController {
     JWTAuthGuard,
     WorkspaceRoleGuard([
       WorkspaceRole.Owner,
-      WorkspaceRole.Owner,
+      WorkspaceRole.Admin,
       WorkspaceRole.Member,
     ]),
   )

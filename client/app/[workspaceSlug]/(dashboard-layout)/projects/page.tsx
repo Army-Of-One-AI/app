@@ -31,6 +31,7 @@ import ProjectsSkeleton from "./components/ProjectSkeleton";
 import EmptyState from "./components/EmptyState";
 import StatCard from "./components/StatCard";
 import { ProjectCard } from "./components/ProjectCard";
+import useCurrentUserWorkspacePermissions from "@/features/auth/hooks/useCurrentUserWorkspacePermissions";
 
 const LIMIT = 20;
 
@@ -46,6 +47,11 @@ export default function ProjectsPage() {
   const [status, setStatus] = useState<ProjectStatus | "">("");
 
   const { userInfo: currentUser } = useAuthentication();
+  const { data: currentUserWorkspacePermissions } =
+    useCurrentUserWorkspacePermissions(workspaceSlug);
+  const canCreateProject =
+    currentUserWorkspacePermissions?.workspacePermissions.project.canCreate ??
+    false;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["workspace-projects", workspaceSlug, debouncedSearch, status],
@@ -181,14 +187,16 @@ export default function ProjectsPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={openCreateProjectModal}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 text-sm font-medium text-[var(--btn-primary-color)] shadow-xs transition hover:bg-[var(--btn-primary-bg-hover)]"
-            >
-              <Plus size={16} />
-              Create project
-            </button>
+            {canCreateProject && (
+              <button
+                type="button"
+                onClick={openCreateProjectModal}
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 text-sm font-medium text-[var(--btn-primary-color)] shadow-xs transition hover:bg-[var(--btn-primary-bg-hover)]"
+              >
+                <Plus size={16} />
+                Create project
+              </button>
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -246,6 +254,7 @@ export default function ProjectsPage() {
         ) : (
           <EmptyState
             hasActiveFilters={hasActiveFilters}
+            canCreateProject={canCreateProject}
             onCreate={openCreateProjectModal}
             onResetFilters={resetFilters}
           />
