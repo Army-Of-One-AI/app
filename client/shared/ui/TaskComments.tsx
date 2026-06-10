@@ -66,7 +66,7 @@ function buildTaskCommentsUrl(
   projectSlug: string,
   taskId: string
 ) {
-  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sprints/tasks/${taskId}/comments`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/tasks/${taskId}/comments`;
 }
 
 export default function TaskComments({

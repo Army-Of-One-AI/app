@@ -10,6 +10,7 @@ import { Prisma } from 'generated/prisma/client';
 import { getUniqueFields } from 'src/shared/helpers/prisma.helper';
 import InviteByEmailsDto from './dto/invite-by-emails.dto';
 import { EmailsService } from '../emails/emails.service';
+import updateMemberRoleDto from './dto/update-member-role';
 
 @Injectable()
 export class WorkspacesService {
@@ -359,5 +360,35 @@ export class WorkspacesService {
         avatarURL: invite.creator.userInfo?.avatar_url,
       },
     }));
+  }
+
+  async updateMemberRole(
+    workspaceSlug: string,
+    memberId: string,
+    dto: updateMemberRoleDto,
+  ) {
+    const { role } = dto;
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: {
+        slug: workspaceSlug,
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    return this.prisma.workspaceMember.update({
+      where: {
+        workspace_id_member_id: {
+          member_id: memberId,
+          workspace_id: workspace.id,
+        },
+      },
+      data: {
+        role,
+      },
+    });
   }
 }

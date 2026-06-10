@@ -12,6 +12,11 @@ export const WORKSPACE_UPDATE_ROLES: WorkspaceRole[] = [
   WorkspaceRole.Admin,
 ];
 
+export const WORKSPACE_USERS_MANAGEMENT_ROLES: WorkspaceRole[] = [
+  WorkspaceRole.Owner,
+  WorkspaceRole.Admin,
+];
+
 export const WORKSPACE_DELETE_ROLES: WorkspaceRole[] = [WorkspaceRole.Owner];
 
 export const PROJECT_READ_ROLES: ProjectRole[] = [
@@ -167,6 +172,21 @@ export class PermissionsService {
     };
   }
 
+  private _getWorkspacePermissions(params: {
+    workspaceRole?: WorkspaceRole | null;
+  }) {
+    const { workspaceRole } = params;
+
+    return {
+      member: {
+        canView: !!workspaceRole,
+        canManage:
+          !!workspaceRole &&
+          WORKSPACE_USERS_MANAGEMENT_ROLES.includes(workspaceRole),
+      },
+    };
+  }
+
   async getCurrentUserProjectPermissions(params: {
     userId: string;
     workspaceSlug: string;
@@ -192,6 +212,30 @@ export class PermissionsService {
       projectRole: projectMember?.role ?? null,
       permissions: this._getProjectPermissions({
         projectRole: projectMember?.role ?? null,
+      }),
+    };
+  }
+
+  async getCurrentUserWorkspacePermissions(params: {
+    userId: string;
+    workspaceSlug: string;
+  }) {
+    const workspaceMember = await this.prisma.workspaceMember.findFirst({
+      where: {
+        member_id: params.userId,
+        workspace: {
+          slug: params.workspaceSlug,
+        },
+      },
+      select: {
+        role: true,
+      },
+    });
+
+    return {
+      workspaceRole: workspaceMember?.role ?? null,
+      permissions: this._getWorkspacePermissions({
+        workspaceRole: workspaceMember?.role ?? null,
       }),
     };
   }

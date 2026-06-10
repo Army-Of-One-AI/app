@@ -28,6 +28,7 @@ import { TasksService } from '../tasks/tasks.service';
 import { CreateTaskDto } from '../tasks/dto/create-task.dto';
 import { CurrentUserProjectPermissionsInterceptor } from 'src/shared/interceptors/current-user-project-permissions.interceptor';
 import {
+  PermissionsService,
   PROJECT_CREATE_ROLES,
   PROJECT_MEMBER_MANAGE_ROLES,
   PROJECT_READ_ROLES,
@@ -36,6 +37,7 @@ import {
   TASK_DELETE_ROLES,
   TASK_READ_ROLES,
   TASK_UPDATE_ROLES,
+  WORKSPACE_USERS_MANAGEMENT_ROLES,
 } from '../permissions/permissions.service';
 import { UpdateTaskDto } from '../tasks/dto/update-task.dto';
 import { DocumentsService } from '../documents/documents.service';
@@ -54,6 +56,7 @@ import { TaskCommentsService } from '../task-comments/task-comments.service';
 import { CreateCommentDto } from '../task-comments/dto/create-comment.dto';
 import { TaskLabelsService } from '../task-labels/task-labels.service';
 import CreateTaskLabelDto from '../task-labels/dto/create-task-label.dto';
+import updateMemberRoleDto from './dto/update-member-role';
 
 @Controller('workspaces')
 export class WorkspacesController {
@@ -66,6 +69,7 @@ export class WorkspacesController {
     private readonly sprintsService: SprintsService,
     private readonly taskCommentsService: TaskCommentsService,
     private readonly taskLabelsService: TaskLabelsService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   @UseGuards(JWTAuthGuard)
@@ -536,7 +540,7 @@ export class WorkspacesController {
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
-  @Post(':workspaceSlug/projects/:projectSlug/sprints/tasks/:taskId/comments')
+  @Post(':workspaceSlug/projects/:projectSlug/tasks/:taskId/comments')
   async createTaskComment(
     @CurrentUser() user: { id: string },
     @Param('taskId') taskId: string,
@@ -546,7 +550,7 @@ export class WorkspacesController {
   }
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
-  @Get(':workspaceSlug/projects/:projectSlug/sprints/tasks/:taskId/comments')
+  @Get(':workspaceSlug/projects/:projectSlug/tasks/:taskId/comments')
   async getRootComments(
     @Param('taskId') taskId: string,
     @Query('limit') limit?: string,
@@ -562,7 +566,7 @@ export class WorkspacesController {
 
   @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_READ_ROLES))
   @Get(
-    ':workspaceSlug/projects/:projectSlug/sprints/tasks/:taskId/comments/:commentId/replies',
+    ':workspaceSlug/projects/:projectSlug/tasks/:taskId/comments/:commentId/replies',
   )
   async getReplies(
     @Param('commentId') commentId: string,
@@ -615,5 +619,31 @@ export class WorkspacesController {
       projectSlug,
       labelId,
     );
+  }
+
+  @UseGuards(JWTAuthGuard, WorkspaceRoleGuard(WORKSPACE_USERS_MANAGEMENT_ROLES))
+  @Put(':workspaceSlug/members/:memberId')
+  async updateMemberRole(
+    @Param('workspaceSlug') workspaceSlug: string,
+    @Param('memberId') memberId: string,
+    @Body() payload: updateMemberRoleDto,
+  ) {
+    return await this.workspacesService.updateMemberRole(
+      workspaceSlug,
+      memberId,
+      payload,
+    );
+  }
+
+  @UseGuards(JWTAuthGuard)
+  @Get(':workspaceSlug/me/permissions')
+  async getCurrentUserWorkspacePermissions(
+    @CurrentUser() user: { id: string },
+    @Param('workspaceSlug') workspaceSlug: string,
+  ) {
+    return await this.permissionsService.getCurrentUserWorkspacePermissions({
+      userId: user.id,
+      workspaceSlug,
+    });
   }
 }

@@ -28,7 +28,6 @@ export default class findProjectDocumentsDto {
 
   @IsOptional()
   @IsEnum(FindProjectsOrderBy)
-  @Type()
   orderBy?: FindProjectsOrderBy = FindProjectsOrderBy.Latest;
 
   @IsOptional()
