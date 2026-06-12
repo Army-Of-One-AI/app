@@ -37,6 +37,7 @@ import {
   TASK_DELETE_ROLES,
   TASK_READ_ROLES,
   TASK_UPDATE_ROLES,
+  WORKSPACE_CREATE_PROJECT_ROLES,
   WORKSPACE_USERS_MANAGEMENT_ROLES,
 } from '../permissions/permissions.service';
 import { UpdateTaskDto } from '../tasks/dto/update-task.dto';
@@ -186,7 +187,7 @@ export class WorkspacesController {
     return await this.projectsService.findProjects(query, slug);
   }
 
-  @UseGuards(JWTAuthGuard, ProjectRoleGuard(PROJECT_CREATE_ROLES))
+  @UseGuards(JWTAuthGuard, WorkspaceRoleGuard(WORKSPACE_CREATE_PROJECT_ROLES))
   @Post(':workspaceSlug/projects')
   async createWorkspaceProject(
     @CurrentUser() user: AuthUser,

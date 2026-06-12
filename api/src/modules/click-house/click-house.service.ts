@@ -19,6 +19,8 @@ export class ClickHouseService implements OnModuleDestroy {
       password: configService.get<string>('CLICKHOUSE_PASSWORD') ?? 'password',
       database: configService.get<string>('CLICKHOUSE_DB') ?? 'task_analytics',
     });
+
+    this.sync().then(() => console.log('Done'));
   }
 
   async insertTaskActivity(row: {
