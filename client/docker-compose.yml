@@ -1,0 +1,13 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: client
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production.local
+    environment:
+      NODE_ENV: production

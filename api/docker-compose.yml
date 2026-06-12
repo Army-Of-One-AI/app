@@ -18,9 +18,9 @@ services:
     container_name: postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER:
-      POSTGRES_PASSWORD:
-      POSTGRES_DB:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: army-of-one-ai
     ports:
       - "5434:5432"
     volumes:
